@@ -1,0 +1,347 @@
+MHS Change Log
+
+
+
+
+
+Version 6.1 Pro (1:08 PM 12/5/2009)
+	1:	Added support for Windows Vista Service Pack 2.
+
+Version 6.0 Pro (12:24 PM 11/18/2009)
+	1:	Fixed the CallRemoteFunction() bug in the scripts.
+
+Version 5.9 Pro (10:11 PM 8/14/2009)
+	1:	The Hex Editor no longer loses changes to files when the Helper window is disturbed (was caused by window messages overlapping).
+	2:	Added the ATan2 function to the scripts.
+	3:	Fixed the display of all lock types on float values in the Main Address list.
+	4:	Fixed the display of the lock values on float values in the Modify Address dialog.
+
+Version 5.8 Pro (8:49 PM 6/4/2009)
+	1:	Fixed the Modify Address freeze in the Hex Editor and RAM Watcher.
+	2:	Added a second parameter to LoadProcess() (script API) to allow opening processes in Restricted Mode via scripts.
+	3:	Added the GetProcessNameByPEproc() function to the scripts.
+	4:	Fixed the alignment option in Expression Searches.
+
+Version 5.7 Pro (9:02 PM 5/7/2009)
+	1:	Added the DrawBitmap function to the scripts.
+	2:	Added the BrowseForFolder, GetPathFromIDList, and Execute functions to the scripts.
+	3:	Fixed the displayed range of doubles in search dialog boxes.
+	4:	Fixed the bug in the Auto-Assembler where DB, DW, DD, and DQ commands could not correctly exceed 255 characters.
+	5:	The C/C++/L. Spiro Script code printed in the Auto-Assembler during preview now includes the length of the array.
+	6:	Fixed the parsing of L"" Unicode strings in the Auto-Assembler.
+	7:	Fixed that annoying search bug.  You know the one.
+	8:	Fixed the bugs related to showing message boxes (via scripts or DLL plug-ins) while MHS is detaching from the target process.  Previously the script functions or DLL functions would be called repeatedly while the message box was visible, often causing more message boxes to appear.
+	9:	Added the DrawText function to the scripts.
+	10:	The Hex Editor Helper Window now accepts all valid expressions for input.
+	11:	Fixed the bug in the Hex Editor that caused the data in the Helper to show the values from the first tab when clicking any address in any other tab.
+	12:	Moving the cursor in the Hex Editor with the arrow keys while not holding Shift now results in the selection being lost and the Helper window being updated with the current cursor position.
+	13:	Fixed the Update button in the Modify tab of the Structure Editor dialog.
+	14:	Mapping templates containing pointers over RAM in the Hex Editor is now more stable.
+	15:	Fixed Rotate Right and Rotate Left operations in the Hex Editor.
+
+Version 5.6 Pro (10:41 PM 12/28/2008)
+	1:	Fixed the UDD Path option, broken in MHS 5.5.
+	2:	Search speed fixed on Windows® Vista®.
+	3:	Fixed the CallRemoteFunction() script function (previously always failed).
+	4:	Fixed an error related to setting breakpoints one address away from each other.
+	5:	If there is no selection, copy operations occur on the highlighted address (the grey address) in the Disassembler.
+	6:	Added the Copy Address pop-up–menu item to the Imports and Exports tabs in the Helper window of the Disassembler.
+	7:	Fixed the bug where clicking the Go to Dis… button in the Auto-Hack window would always open in a new tab regardless of the check state.
+	8:	The Assemble button in the Auto-Hack window now works.
+	9:	The NOP button in the Auto-Hack window no longer tries to NOP if no address is selected.
+	10:	The module lists no longer waste time updating twice in a row when debugging begins.
+	11:	Nodes can now be deleted from loaded .lcf files in the Code Filter.
+	12:	Added the File/New menu item to the Code Filter, allowing to make a new filter set from scratch.
+	13:	Added the ability to supply registers when calling functions in the target process.
+	14:	The Disassembler now shows referenced addresses in more detail.
+	15:	The Disassembler now loads OllyDbg 2 UDD files for comments.
+	16:	Fixed a bug in the scripts related to using floats as function parameters.
+
+Version 5.5 Pro (12:09 PM 11/23/2008)
+	1:	Existing addresses in the Stored Address list are no longer overwritten when they have the same address as an item being added to the list.
+	2:	The arrow keys can now be used to change the selected item in the Auto-Hack window.
+	3:	The arrow keys can now be used to change the selected item in the DLL Injector window.
+	4:	The arrow keys can now be used to change the selected item in the Injection Manager window.
+	5:	Opening a process now falls back on weaker methods if the stronger methods fail.
+	6:	Fixed a bug with the initialization of the UDD directory environment variable.
+	7:	Restricted Mode no longer obtains the path and name of the process.  It generates these values instead.
+	8:	A major internal problem related to closing processes which has been there literally for years has been found and fixed.
+	9:	The Disassembler no longer opens to address 0x00000000 if there is an error looking up module entry points.
+	10:	Added the EnumWindows and EnumChildWindows functions to the scripts.
+	11:	The Debugger now attempts to put the Disassembler in the foreground when single-step breakpoints are hit.
+
+Version 5.4 Pro (10:20 PM 9/18/2008)
+	1:	Fixed the Code Filter crash caused by not logging contexts.
+	2:	Added Expression Search.
+	3:	Fixed the Copy Current Value in the Found Address list after Pointer Searches.
+	4:	Added the ?: tertiary operator to the Expression Evaluator.
+	5:	The Code Filter expression highlighter now uses ?? to highlight instead of ?.
+
+Version 5.3 Pro (11:57 PM 8/19/2008)
+	1:	The RAM Watcher can now be set on top of all other windows.
+	2:	Fixed the Assemble bug related to miscounting the number of instructions that need to be NOP’ed when overwriting things.  Bug was not related to Auto-Assemble nor the Injection Manager.
+	3:	Fixed a bug related to the mapping of dynamic templates which caused misalignment in nested dynamic arrays.
+
+Version 5.2 Pro (7:40 PM 8/12/2008)
+	1:	Added StructBuilder/Templates.
+	2:	Hex Editor now allows placing structures/templates over RAM/files.
+	3:	The Delete item in the Hex Editor pop-up menu now works.
+
+Version 5.1 Pro (9:55 PM 7/23/2008)
+	1:	The Sub Search dialog now allows all expressions as valid input.
+	2:	Fixed a crash in the Code Filter “Highlight by Expression” feature related to using the [] operators.
+	3:	Added support for Windows® Vista® SP1.  Thanks to Napalm of http://www.rohitab.com/ for the EPROCESS definition.
+	4:	Fixed the for ( ; CONSTANTVALUE; ) bug in the scripts.
+
+Version 5.0 Pro (8:50 PM 7/13/2008)
+	1:	Holding Shift while moving the caret with the arrow keys now causes the selection to change in the Hex Editor.
+	2:	The Code Filter is more stable while single-stepping and opening a process for debug.
+	3:	# prefix added to the Expression Evaluator to indicate a number should be evaluated as a decimal number.  Applies to the Auto-Assembler, which defaults to treating and numbers as hexadecimal.
+	4:	Added the CaptureScreen function to the scripts.
+	5:	Added the CallLocalFunction, LoadLibrary, LoadLibraryEx, FreeLibrary, and GetModuleHandle functions to the scripts.
+
+Version 4.019 (11:15 AM 6/8/2008)
+	1:	Variable view types added to the Context panel on the Code Filter.
+	2:	Added highlighting of functions that reference strings to the Code Filter.
+	3:	Secret things changed.
+	4:	Fixed the version number.
+	5:	Added highlighting of functions based on the evaluation of an expression.
+	6:	The LockStoredAddresses Hotkey can now also be used to toggle locked/unlocked items.  It is now possible to use one Hotkey to toggle locked items on and off.
+	7:	Added SetProcessSpeed Hotkey.
+
+Version 4.018 (10:36 PM 5/17/2008)
+	1:	The Go To dialog for the Disassembler has been fixed.
+	2:	The UDD path is now correctly reset when invalid upon loading of MHS.
+	3:	Fixed capitalization errors in function descriptions in the help file and Code Window.
+	4:	Fixed the Expression Evaluator bug related to placing a | directly after a number (previously treated the number as being in hexadecimal format).
+	5:	Fixed a crash related to bad timing when closing other processes while MHS is closing.
+	6:	Fixed the assembler.  Previously unable to compile certain commands with multiple registers or produced incorrect machine code.
+	7:	Added Code Filter.
+	8:	Postfixing octal numbers with U or L in the Expression Evaluator no longer results in 100% 0 values.
+	9:	The buttons on the Auto-Assemble dialog no longer remain distorted after normalizing the window from a full-screen state.
+
+Version 4.017 (3:17 PM 4/7/2008)
+	1:	The crash caused by loading the Disassembler on Windows Vista is fixed.
+	2:	The SDT table no longer takes a long time to load on Windows Vista.
+	3:	The Anti-Anti-Cheat levels are now adjustable via the Options menu.
+	4:	Added Restricted Mode.
+	5:	Added the GetCursorPos, SetCursorPos, and ClipCursor functions to the scripts.
+	6:	Added the AddAddress function to the scripts.
+
+Version 4.016 (7:12 AM 3/6/2008)
+	1:	The secret DLL files are no longer left on the hard drive if MHS is used to hack itself and the Disassembler or Hex Editor is opened.
+	2:	Secret things changed.
+
+Version 4.0.0.15 (7:48 AM 3/4/2008)
+	1:	LOCK is now highlighted in the Auto-Assembler editor.
+	2:	GlobalAlloc(), GlobalDeAlloc(), and GlobalFree() added to Auto-Assemble.
+	3:	“LOCK DEC” instructions no longer cause problems being assembled.
+	4:	All cases of “Memory Hacking Software” changed to “MHS” in the help file.
+	5:	Help file updated.
+	6:	Bypasses more stuff.
+	7:	Added RegisterSymbol() and UnregisterSymbol() to Auto-Assemble.
+
+Version 4.0.0.14 (1:06 AM 2/12/2008)
+	1:	The All list in the Open Process dialog now shows processes that have not been closed properly.
+	2:	Functions exported by the HAL are now shown in the Kernel Functions tab.
+	3:	The Go To Target pop-up menu item in the Disassembler now allows going to the target in the current tab or a new tab.
+	4:	The entries to ntoskrnl.exe functions are now shown in the Disassembler.
+	5:	Group Searches now use epsilon as per the search options.
+	6:	Added the CreateHookInfo, DestroyHookInfo, CreateFuncHookInfo, DestroyFuncHookInfo, GetNtOsKrnlRange, GetNtOsKrnlPath, GetNtOsKrnlName, GetHookInfo, GetFuncHookInfo, GetFuncHookTotalCalls, GetFuncHookTotalHooks, GetFuncHookCall, GetFuncHookHook, GetProcAddress, and GetKernelProcAddress functions to the scripts.
+	7:	Added the CreateRemoteThread, CreateRemoteThreadAndGetReturn, and CallRemoteFunction functions to the scripts.
+	8:	Added the GetEproc function to the scripts.
+	9:	Fixed a security bug.
+	10:	Fixed a security bug.
+	11:	Functions in Hal.dll are now shown in the Disassembler.
+	12:	The .EXE extension is now added automatically if not supplied in the Modify Self dialog.
+	13:	Fixed the AddBreakpoint() script function.
+	14:	Module-list processing stabilized when attached to processes that hook certain API functions to protect themselves (improves stability in the Disassembler, Hex Editor, and Properties).
+	15:	The Property header of the Info tab of the Helper dockable of the Hex Editor is now wider by default.
+	16:	The Exports tab of the Disassembler now shows module addresses.
+	17:	All search-related dialogs accept any valid expression for all input fields.
+	18:	SO() and EO() operators added to the Expression Evaluator.
+	19:	Added the ability to view chunks in the Hex Editor or Disassembler from the Properties dialog.
+	20:	The Properties dialog now defaults to the Chunks tab.
+	21:	The EPROCESS tab of the Properties dialog defaults to having a wider header.
+	22:	It is now possible to snap the search range to selected chunks or selected modules via the Properties dialog.
+	23:	Hotkeys added via scripts are no longer saved between sessions.
+	24:	Added the GetSdtFuncIndex, GetSdtFuncName, GetSdtFuncAddress, GetCurrentSdtFuncAddress, GetSdtTableAddress, GetCurrentSdtTableAddress, and GetSdtTotalFuncs, functions to the scripts.
+	25:	MHS is now able to bypass all anti-cheat protections to open processes and read their RAM.
+	26:	Added the Assemble command to the Disassembler pop-up menu.
+
+Version 4.0.0.13 (12:02 AM 1/21/2008)
+	1:	Added the RegisterHotkey and UnregisterHotkey functions to the scripts.
+	2:	Added the LockScanForRead and UnlockScanForRead functions to the scripts.
+	3:	Modified the way Auto-Assembler scripts work when applied to Stored Addresses.
+	4:	Processes that are opened after MHS now have their EPROCESS addresses shown in the Open Process dialog.
+	5:	All processes opened after MHS now appear in the All listing of the Open Process dialog.
+	6:	Code compiled with the Auto-Assembler is now smaller.
+	7:	Added the ReadLocalMemory and WriteLocalMemory functions to the scripts to allow reading/writing of kernel RAM.
+	8:	Added a self-modifier which allows MHS to change its CRC/MD5, window titles, and other things.
+	9	Function/Enum/Struct/Typedef/Function database complete.
+	10:	The EPROCESS tab in the Properties page is now filled on Windows Vista.
+	11:	Increased compatibility with Windows® Vista.
+	12:	MHS now remains open longer than other processes during system shutdowns.
+	13:	MHS now shows “<unknown>” in the Open Process dialog only when processes are unnaturally hidden (very rarely).
+	14:	Filler instructions are lightened in the Disassembler.
+	15:	Fixed Group Search when supplying floating-pointer numbers.
+	16:	The EPROCESS tab in the Properties page is now filled even when opening a hidden process.
+	17:	Fixed a crash in the Disassembler related to trying to open a tab to an invalid address and then later viewing a kernel address.
+
+Version 4.0.0.12 (12:28 PM 12/28/2007)
+	1:	Advanced Speed Hack to work on more games.
+	2:	Added snippets to the Auto-Assembler.
+	3:	Added the OpenProcess function to the scripts.
+	4:	Fixed the OpenThread description in the help file.
+	5:	The OpenThread script function is now memory-managed (the HANDLE returned will be cleaned up automatically when the script set is destroyed, if left open).
+	6:	The Hex Editor no longer locks files while editing them.
+	7:	The Hex Editor now detects when files are modified externally and prompts to reopen them.
+	8:	Fixed the error message shown when attempting to use [ENABLE] or [DISABLE] in the main Auto-Assemble window.
+	9:	Fixed the version of the .EXE file.
+	10:	Added the Set CF, Set PF, Set AF, Set ZF, Set SF, and Set OF functions to breakpoints.
+	11:	Updated the help file regarding breakpoint features.
+	12:	Registers can now be modified from the Disassembler.
+
+Version 4.0.0.11 (3:37 PM 12/17/2007)
+	1:	Fixed the crash related to clicking an Auto-Hack entry while no Disassembler tabs are shown.
+	2:	The Hex Editor now updates its status when MHS detaches.
+	3:	Added Speed Hack.
+	4:	Added the ability to preprocess files as C (__cplusplus not defined).
+	5:	Fixed the bug related to modifying Stored Values that do not have Auto-Assemble scripts.
+	6:	Fixed the loading of the Use Complex Address setting on Stored Values.
+
+Version 4.0.0.10 (10:52 PM 12/9/2007)
+	1:	Auto-Assemble templates created with right-clicks in the Disassembler are now added to the already-open Auto-Assemble window (if it is open already).
+	2:	Auto-Assemble added to Stored Addresses (values added to the main list).  Addition includes the [ENABLE], [DISABLE], and [GLOBAL] optional tags.
+	3:	Auto-Assembler parser is now more advanced and allows module:function to be used anywhere.
+	4:	db commands in the Auto-Assembler are no longer restricted to one type of data (string, Unicode string, or hex string).  db commands can now include any mixture of any types of data and now including labels and module:function types.
+	5:	rep, repe, repz, repne, repnz, loop, loope, loopz, loopne, loopnz, pushad, popad, pushfd, popfd, iretd, pusha, popa, pushf, popf, iret, db, dw, dd, and dq are now highlighted in the Auto-Assembler editor.
+	6:	dw, dd, and dq added to the Auto-Assembler.
+	7:	API Hook template added to the Auto-Assembler.
+
+Version 4.0.0.9 (12:34 PM 12/5/2007)
+	1:	Kernel function addresses now shown in the Disassembler Helper tab.
+	2:	Added the CreateDisObj, DestroyDisObj, and Disasm functions to the scriptss.
+	3:	Added the MHSAssembly page to the help file.
+	4:	Fixed the Predefined Enums page in the help file.
+	5:	Fixed a compilation bug in the scripts.
+	6:	Single-stepping now highlights the current function.
+	7:	Added the ability to select functions.
+	8:	Fixed a bug in the Assembler related to unary + and - operators.
+	9:	The Disassembler now allows copying selected addresses as Auto-Assembler strings.
+	10:	Fixed the Hex Editor crash related to modifying values with the Modify Value command.
+	11:	Fixed the token-replacing bug in the Auto-Assembler.
+	12:	The kernel ReadProcessMemory() and WriteProcessMemory() are now disabled by default on Windows® Vista.
+	13:	The Group search is fixed.
+
+Version 4.0.0.8 (11:23 AM 12/1/2007)
+	1:	Scrollbars added to the edit controls in the ASM Preview dialog.
+	2:	The Auto-Assembler is now accessible from the Disassembler.
+	3:	Injection template added to the Auto-Assembler.
+	4:	Fixed the allocation problems in the Auto-Assembler (closing the dialog would not free allocations made by previews, and previewing, injecting, and then previewing again would deallocate the code from the injection).
+	5:	The Properties window is now much faster to load.
+	6:	The Properties window now allows changing the properties of the chunks.
+	7:	The Expression Evaluator no longer treats some hex numbers as floats when input is meant to be hex by default.
+	8:	The Disassembler can now show code in kernel RAM.
+	9:	Fixed the SHL and POR bugs in the Disassembler.
+	10:	Added the ZLib entry to the Script Function Reference in the help file.
+
+Version 4.0.0.7 (11:56 PM 11/27/2007)
+	1:	Added Auto-Assemble.
+	2:	Software execute breakpoints now modify the page properties of the target process in order to ensure they can be set.
+	3:	Fixed an indirection bug with extern floats and doubles in the scripts.
+	4:	Added per-process breakpoint handlers (scripts).
+	5:	The help-file page regarding breakpoints has been broken into two parts to make it easier to read.
+	6:	The dialog prompting to attach the Debugger is no longer shown if adding the breakpoint is canceled.
+	7:	On_CloseProcess() script function now called before the process handle and ID are invalidated, and they are now passed to the function.
+	8:	Added an alternative way for searches to generate chunks for the scan.  This allows searches to bypass anti-cheat devices.
+	9:	Added the EvaluateExpression and CastExpression functions to the scripts.
+	10:	Added the IsDebugging, AttachDebugger, DetachDebugger, DebugFile, AddBreakpoint, RemoveBreakpoint, EnterSingleStep, IsStepping, StopStepping, StepOnce, and StepOver functions to the scripts.
+	11:	Added the GetCurProcessPEproc function to the scripts.
+	12:	Added the AutoAssemble function to the scripts.
+	13:	The Go To dialog in the Disassembler now allows any valid expression for addresses and offsets.
+	14:	The Chunks tab of the Properties window now allows changing access rights.
+	15:	Added the On_DBG_* events to the scripts.
+	16:	Added the GetRemoteFuncAddress, InjectDll, FindModuleByAddress, FindModuleByRange, and FindModuleByName functions to the scripts.
+
+Version 4.0.0.6 (12:18 AM 11/17/2007)
+	1:	MHS can now write to the memory of more processes, especially ones protected by anti-cheats.
+	2:	Stored addresses can now be viewed in hex rather than decimal.
+	3:	Fixed the Found Address List display after Hotkey searches are performed.
+	4:	Fixed the Same as Original sub search when performed with a quick Hotkey.
+	5:	Added the ability to pause and resume the target process with Hotkeys.
+	6:	The Hex Editor no longer has a problem displaying addresses that wrap around from 0xFFFFFFFF to 0x00000000.
+	7:	Fixed the Memory Allocator menu item.
+	8:	The Memory Allocator Close button now works.
+	9:	Added Remove Breakpoint to the pop-up menu in the Disassembler.
+	10:	Added Go To…/In Current Tab and Go To…/In New Tab to the pop-up menu in the breakpoint list.
+	11:	Added a Properties display that shows the properties of the current process.
+	12:	There is no longer a problem displaying stored values set to Unicode when the value is “Unobtainable”.
+	13:	The Open Process dialog is now resizable.
+	14:	Kernel RAM can now be read and modified.
+	15:	Kernel RAM can now be searched.
+	16:	The Hex Editor now modifies its viewport if Go To… is used to go to an address that is out of range of the current viewport.
+
+Version 4.0.0.5 (12:14 AM 10/29/2007)
+	1:	Added a Memory Allocator.
+	2:	Fixed a bug with the display of auto-hack hits.  Although the hits were tracked, the dialog would sometimes fail to update, giving the appearance that the auto-hack had stopped working.
+	3:	Fixed a bug regarding detaching the Debugger which caused the auto-hack window’s Start/Stop button to lose synchronization.
+	4:	Improved stability of kernel-mode ReadProcessMemory().  All theoretical issues are resolved.
+	5:	Decreased rate of thread-list updating allowing for faster single-stepping.
+	6:	Added icons to the thread list in the Disassembler Helper window to indicate threads that are running and threads that are currently in single-stepping mode.
+	7:	Added the ability to pause and view threads from the Disassembler Helper window.
+	8:	Windows and dockables can now be moved to virtual monitors (secondary monitors).
+	9:	Added the ZLib library to scripts.
+
+Version 4.0.0.4 (5:27 PM 10/21/2007)
+	1:	Top-level windows are now shown in the Open Process dialog.
+	2:	Fixed the SETNE (and similar) decoding in the Disassembler.
+	3:	ASM hints now decode operands by size more accurately (previously it would decode some byte-sized operands as dwords, etc.)
+	4:	ASM hints are now applied to more instructions.
+	5:	Improved script speed slightly.
+	6:	Fixed a -- and ++ bug in the scripts.
+	7:	Reading the target process’s memory is now approximately twice as fast.
+	8:	MHS can now read the memory of more processes, especially hidden ones.
+	9:	Added a DLL Injection utility.
+	10:	Added menu a shortcut to the Injection Manager from the Disassembler window.
+	11:	Added the ability to call functions from injected DLL’s.
+	12:	Addresses of instructions are now shown in the Inject Code/Modify Injection dialog.
+	13:	TreeBox controls now destroy faster, improving the response time when attaching the debugger while the Imports or Exports tabs are in view.
+	14:	The Disassembler now allows calling functions in the target process by right-clicking them.
+	15:	The Imports and Exports pages in the Disassembler Helper window now allow remote calling of the functions they list.
+
+Version 4.0.0.3 (5:43 PM 10/2/2007)
+	1:	Added the SetSearchRange function to the scripts API.
+	2:	Added user tools to the Tools menu, changeable in the options dialog.
+	3:	Fixed a bug with ReAlloc() in the scripts.
+	4:	Fixed the “Attach Debugger?” dialog shown when adding breakpoints.
+	5:	Fixed the issue where the Debugger attaches after each breakpoint.
+	6:	Added the GetCrc fuction to the scripts API.
+
+Version 4.0.0.2 (10:11 PM 9/22/2007)
+	1:	FILE objects in the script are no longer scoped by thread.  Previously, FILE objects could be closed automatically when the creating thread exited.
+	2:	The Script Editor no longer fails to display the editor control in the tab view.  Previously, if LS_SciLexer.dll existed in the directory when MHS was started this control would fail to load.
+	3:	The Script Preprocessor no longer fails to operate when LS_PP.dll exists in the directory when MHS is started.
+	4:	The Script Editor and Disassembler no longer allow retarded docking the first time the program is run.  Previously, the first time the helper windows were docked they would have a 0 width/height so they could not be seen.
+	5:	If a breakpoint is added and the Debugger is not already attached, a prompt is shown to attach it.
+	6:	An option has been added to the Disassembler to always attach the Debugger when breakpoints are added (without prompting).
+	7:	WS_* and WS_EX_* window styles have been added as enumerations to the scripts.
+	8:	LB_*, LBN_*, LBS_*, CB_*, CBN_*, and CBS_* listbox and combobox messages have been added as enumerations to the scriptss.
+	9:	More specific error information is printed when “Undeclared identifier” errors are reported in the scripts.
+	10:	Insert Address now allows manual adding of strings.
+	11:	Added the option to display Stored Addresses with Unicode decoding (string types only).
+	12:	Added the OpenThread and TerminateThread functions to the scripts API.
+	13:	Modified the help file.
+	14:	Added the Go to Nearest option in the Found Address pop-up menu after Pointer Searches.
+
+Version 4.0.0.1 (2:09 PM 9/5/2007)
+	1:	&&, ||, ==, !=, <, >, <=, and >= operators added to the Expression Evaluator.
+	2:	Saved breakpoints can now be reloaded.
+	3:	Old breakpoint files can now be loaded.  97% compatibility with old breakpoint files.
+	4:	Conditional breakpoints added.
+	5:	Added a toolbar to the Hex Editor.
+	6:	Added the Modify Value... option to the Hex Editor pop-up menu.
+	7:	Updated the help file.
+
+Version 4.0.0.0 (11:34 PM 8/20/2007)
+	Initial Release
