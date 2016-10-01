@@ -1,0 +1,4 @@
+* Finish the reading of the MIT paper
+* Stub out the functions that will be needed for the NEAT algorithm
+* Create the save state that will be used
+* Design the different files that will be written during the process
