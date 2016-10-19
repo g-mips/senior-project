@@ -16,6 +16,19 @@
 
 --]]
 MAX_IN_NODES = 8
+SAVE_STATE = "SMB_World1-1.State"
+
+function setController()
+
+end
+
+function writeGenotype(genotype)
+
+end
+
+function writeGeneration()
+
+end
 
 --[[
 - Can change connection weights and network structures.
@@ -24,8 +37,13 @@ MAX_IN_NODES = 8
    - Node addition
 - Each mutation expands the size of the genome by adding gene(s).
 --]]
-function mutate(genome)
+function mutate(genotype)
+   --[[ Add Connection: Single new connection gene with a random weight is added connecting two previously unconnected nodes --]]
 
+   --[[ Add Node: An existing connection is split and the new node placed where the old connection used to be. Old: disabled. Two New: Added 
+        New connection leading into the new node receives a weight of 1, and the new connection leading out receives the same weight as the
+        old connection.
+   --]]
 end
 
 --[[
@@ -75,13 +93,25 @@ end
 
 function main()
    local genotype = generateGenotype()
+   local frames = 0
+   local feedback = 0
+   local controller = joypad.get()
+   print(controller) 
+   
    while true do
       --[[ Call display information every frame --]]
       displayInformation()
 
+      if (frames > 60)
+      then
+	 frames = 0
+	 savestate.load(SAVE_STATE)
+      end
       --[[ Advance a frame --]]
+      frames = frames + 1
       emu.frameadvance()
    end
 end
 
+savestate.load(SAVE_STATE)
 main()
