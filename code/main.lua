@@ -1,49 +1,3 @@
---[[ 
-- Mutation
-
-- Input Nodes (8):
-
-   - 'A'
-   - 'B'
-   - 'Select'
-   - 'Start'
-   - 'Up'
-   - 'Left'
-   - 'Right'
-   - 'Down'
-
-- Generate the population (the genome??)
-
-Genotype/Genome (Neural Network) : List of connection nodes and node genes
-Connection Nodes                 : Shows the input and output nodes, the weight of the connection, whether or not it it enabled, and the connections innovation id.
-Node Genes                       : List of input, hidden, and output nodes that can be connected.
-
-member : {
-   "genotype" : {
-       "cNodes" : {
-           0 : {
-                 "in": nodeIn,
-                 "out": nodeOut,
-                 "weight": math.random(0.1, 1),
-                 "active": true,
-                 "id": INNOVATION_ID
-           },
-           ...
-       },
-       "nodeGenes" : {
-           0 : {
-                 "type": geneType,
-                 "ID": id
-           },
-           ...
-       }
-   },
-   "phenotype" : {
-   
-   }
-}
-
---]]
 SAVE_STATE = "SMB_World1-1.State"
 MAX_FITNESS = 0
 BUTTONS = {
@@ -65,44 +19,95 @@ NUM_INPUT_NODES  = ((BoxRadius*2+1)*(BoxRadius*2+1))+1
 NUM_OUTPUT_NODES = #BUTTONS
 MAX_NODES = 100000
 
-INNOVATION_NUMBER = 0
 POPULATION        = 200
 
-MUTATION_CHANCE   = 0.25
-WEIGHT_CHANCE     = 0.15
+WEIGHT_CHANCE     = 0.25
 CONNECTION_CHANCE = 2.0
 NODE_CHANCE       = 0.50
 DISABLE_CHANCE    = 0.4
 ENABLE_CHANCE     = 0.2
+STEP              = 0.1
 
 PerturbChance = 0.90
 CrossoverChance = 0.75
 
 BiasMutationChance = 0.40
 
-function setController()
+--[[
+   {
+       "in":  #,
+       "out": #
+   }
+--]]
+GLOBAL_INNOVATIONS = {}
 
+--[[
+   NEW_POOL:
+   Creates a new pool with empty everything.
+Parameters:
+   None
+Return:
+   Returns the newly created pool
+--]]
+function newPool()
+   local pool = {
+      -- Table of species. Indexes are just numbers. Is #species safe.
+      "species": {},
+      "generation": 0,
+      "currentSpecies": 1,
+      "currentMember": 1,
+      "currentFrame": 0,
+      "maxFitness": 0
+   }
+
+   return pool
 end
 
-function writeGenotype(genotype)
+--[[
+   NEW_SPECIES:
+   Creates a new species with empty everything.
+Parameters:
+   None
+Return:
+   Returns the newly created species
+--]]
+function newSpecies()
+   local species = {
+      "topFitness": 0,
+      -- Table of members. Indexes are just numbers. Is #members safe.
+      "members": {},
+      "averageFitness": 0
+   }
 
+   return species
 end
 
-function writeGeneration()
-
-end
-
+--[[
+   NEW_MEMBER:
+   Creates a new member with empty everything, except the mutationChances.
+Parameters:
+   None
+Return:
+   Returns the newly created member
+--]]
 function newMember()
    local member = {
       "genotype": {
+	 -- Table of connection nodes. Indexes represent the innovation numbers. Is NOT #cNodes safe
 	 "cNodes": {},
-	 "nodeGenes": {},
+	 -- How this works is that 1 - NUM_INPUT_NODES are input nodes.
+	 -- (MAX_NODES + NUM_OUTPUT_NODES) - MAX_NODES are the output nodes.
+	 -- The inbetween nodes are the hidden nodes
+	 "numNodeGenes": 0,
+	 "maxNodeGenes": 0,
+	 "numCNodes": 0
 		  },
       "phenotype": {},
       "mutationChances": {
 	 "weight": WEIGHT_CHANCE,
 	 "node": NODE_CHANCE,
 	 "connection": CONNECTION_CHANCE,
+	 -- TODO(Grant): Do I need this active mutationChance?
 	 "active": 0,
 	 "enable": ENABLE_CHANCE,
 	 "disable": DISABLE_CHANCE
@@ -111,84 +116,75 @@ function newMember()
       "rank": 0,
    }
 
-   return genotype
+   return member
 end
    
 --[[
-   NEW_NODE_GENE:
+   NEW_CONNECTION_NODE:
+   Creates a connection node with a node in of nodeIn and a node out of nodeOut.
+   Defaults to a 0 innovation. Should be changed to a real number.
+   Defaults to being active.
+   Defaults to having a weight of 0.
 Parameters:
-   id - The ID of the new node gene. This is ever increasing and is 
-   geneType - 0: Input, 1: Hidden, 2: Output
+   nodeIn - The node that the connection starts with.
+   nodeOut - The node that the connection ends with.
+Return:
+   Returns the connectionNode created
 --]]
-function newNodeGene(id, geneType)
-   local nodeGene = {
-      "type": geneType,
-      "ID": id
-   }
-
-   return nodeGene
-end
-
---[[
-   NEW CONNECTION NODE:
-
-   NODE is a GENE
---]]
-function newConnectionNode(member, nodeIn, nodeOut)
-   -- TODO(Grant): Figure out how innovation number is handled (i.e. globally or scope of each member)
-   INNOVATION_NUMBER += 1
-   --member["genotype"]["innovationNumber"] += 1
+function newConnectionNode(nodeIn, nodeOut)
    local connectionNode = {
       "in": nodeIn,
       "out": nodeOut,
       "weight": 0,
       "active": true,
-      "id": INNOVATION_ID
+      "innovation": 0
    }
    
    return connectionNode
 end
 
-function getRandomNode(member, availableOutputs)
+--[[
+   GET_RANDOM_NODE:
+   Gets a random node
+--]]
+function getRandomNode(genotype, availableOutputs)
    local node
-   local outputNodes
-   
+   local outputNodes = { "nodes": {}, "numNodes": 0 }
+
    if #availableOutputs != 0 then
       -- For choosing the output node
-      node = math.random(1, #availableOutputs)
-      outputNodes = availableOutputs
+      node = availableOutputs["nodes"][math.random(#availableOutputs["nodes"]-availableOutputs["numNodes"],#availableOutputs["nodes"])]
    else
       -- For choosing the input node 
       local foundNode
 
+      -- Keep going until a valid node is found
       repeat
 	 foundNode = true
 
-	 -- Create a list of all avaliable outputNodes
-	 outputNodes = {}
-	 for i=1, NUM_OUTPUT_NODES, 1 do
-	    outputNodes[i] = i+MAX_NODES
+	 -- Generate the outputNodes
+	 for i=NUM_INPUT_NODES+1,genotype["numNodeGenes"],1 do
+	    outputNodes["nodes"][i] = NUM_INPUT_NODES+i
+	    outputNodes["numNodes"] = outputNodes["numNodes"] + 1
 	 end
 
-	 -- Get a random input node
-	 node = math.random(1, NUM_INPUT_NODES)
+	 -- Find a random node that is not an output node
+	 repeat
+	    node = math.random(genotype["numNodeGenes"])
+	 until (node > NUM_INPUT_NODES + NUM_OUTPUT_NODES or node <= NUM_INPUT_NODES)
 
-	 -- Mark nodes for removing
-	 for i=1, #member["genotype"]["cNodes"], 1 do
-	    if member["genotype"]["cNodes"]["in"] == node then
-	       outputNodes[member["genotype"]["cNodes"]["out"]] = nil
-	    end
-	 end
-
-	 -- Remove marked nodes
-	 for i=#outputNodes, 1, -1 do
-	    if outputNodes[i] == nil then
-	       table.remove(outputNodes, i)
+	 -- Remove nodes from outputNodes table
+	 for i=1, genotype["numCNodes"], 1 do
+	    if genotype["cNodes"][i]["in"] == node then
+	       if outputNodes["nodes"][genotype["cNodes"][i]["out"]] ~= nil then
+		  table.remove(outputNodes["nodes"], genotype["cNodes"][i]["out"])
+		  outputNodes["numNodes"] = outputNodes["numNodes"] - 1
+	       end
 	    end
 	 end
 
 	 -- Check if there are no outputNodes left
-	 if #outputNodes == 0 then
+	 if outputNodes["numNodes"] == 0 then
 	    foundNode = false
 	 end
       until (foundNode)
@@ -199,25 +195,18 @@ end
 
 --[[
    MUTATE:
-   There
 Parameters:
    member - This is the current member/genome that will be mutated
 Return:
    member - The mutated member/genome
-   Finished!
    TODO: TEST!
-- Can change connection weights and network structures.
-- Structural mutations occur in two ways:
-   - Connection addition
-   - Node addition
-- Each mutation expands the size of the genome by adding gene(s).
 --]]
 function mutate(member)
    -- Change rate of mutation chances
    
    -- Add Connection: Single new connection gene with a random weight is added connecting two previously unconnected nodes
    if math.random() > member["mutationChances"]["connection"] then
-      member = addConnectionMutation(member)
+      addConnectionMutation(member["genotype"])
    end
    
    --[[ Add Node: An existing connection is split and the new node placed where the old connection used to be. Old: disabled. Two New: Added 
@@ -225,108 +214,263 @@ function mutate(member)
         old connection.
    --]]
    if math.random() > member["mutationChances"]["node"] then
-      member = addNodeMutation(member)
+      addNodeMutation(member["genotype"])
    end
 
    if math.random() > member["mutationChances"]["weight"] then
-      member = addWeightMutation(member)
+      addWeightMutation(member["genotype"])
    end
    
    -- TODO(Grant): Alter activation response
+   -- NOTE(Grant): I may not need this
    if math.random() > member["mutationChances"]["active"] then
 
    end
 
    if math.random() > member["mutationChances"]["enable"] then
-      member = addEnableDisableMutation(member, true)
+      addEnableDisableMutation(member["genotype"], true)
    end
 
    if math.random() > member["mutationChances"]["disable"] then
-      member = addEnableDisableMutation(member, false)
+      addEnableDisableMutation(member["genotype"], false)
    end
-   
-   return member
 end
 
+function checkInnovation(nodeIn, nodeOut)
+   local globalInnovationIndex = 0
 
---[[
-   Finished!
-   TODO: TEST!
---]]
-function addConnectionMutation(member)
-   -- Get an input and an output node
-   local nodeIn, outputNodes  = getRandomNode(member, {})
-   local nodeOut, outputNodes = getRandomNode(member, outputNodes)
-   local connectionNode       = newConnectionNode(member, nodeIn, nodeOut)
+   -- Check to see if the innovation already exists
+   for i=1, #GLOBAL_INNOVATIONS, 1 do
+      if GLOBAL_INNOVATIONS[i]["in"] == nodeIn and GLOBAL_INNOVATIONS[i]["out"] == nodeOut then
+	 globalInnovationIndex = i
+	 break
+      end
+   end
 
-   connectionNode["weight"] = math.random(-2, 2)
-   
-   -- Add the new connection node to the member
-   table.insert(member["genotype"]["cNodes"], connectionNode)
-
-   return member
+   return globalInnovationIndex
 end
 
 --[[
+   ADD_CONNECTION_MUTATION:
+   
    Finished!
    TODO: TEST!
+
+Parameters:
+Return:
+
 --]]
-function addNodeMutation(member)
+function addConnectionMutation(genotype)
+   local nodeIn
+   local outputNodes
+   local nodeOut
+   local globalInnovationIndex
+
+   -- Get an input and an output node and use them to check if a connection between them already exists.   
+   nodeIn, outputNodes   = getRandomNode(genotype, {})
+   nodeOut, outputNodes  = getRandomNode(genotype, outputNodes)
+   globalInnovationIndex = checkInnovation(nodeIn, nodeOut)
+
+   -- If the innovation exists, then just change it's weight
+   -- If it doesn't exist, create it
+   if globalInnovationIndex > 0 then
+      genotype["cNodes"][globalInnovationIndex]["weight"] = math.random() + math.random(-2, 2)
+   else
+      local connectionNode = newConnectionNode(nodeIn, nodeOut)
+
+      -- Insert the new innovation to the global list (which increments the number of innovations count)
+      table.insert(GLOBAL_INNOVATIONS, { "in": nodeIn, "out": nodeOut })
+
+      -- Add the new innovation to the connection node and create a random weight
+      connectionNode["innovation"] = #GLOBAL_INNOVATIONS
+      connectionNode["weight"] = math.random() + math.random(-2, 2)
+   
+      -- Add the new connection node to the genotype and increase the connection node count
+      genotype["cNodes"][connectionNode["innovation"]] = connectionNode
+      genotype["numCNodes"] = genotype["numCNodes"] + 1
+   end
+end
+
+--[[
+   ADD_NODE_MUTATION:
+
+   Finished!
+   TODO: TEST!
+
+Parameters:
+Return:
+
+--]]
+function addNodeMutation(genotype)
    -- Get a random connection node
-   local index       = math.random(1,#member["genotype"]["cNodes"])
-   local input       = member["genotype"]["cNodes"][index]["in"]
-   local output      = member["genotype"]["cNodes"][index]["out"]
+   local index  = math.random(genotype["numCNodes"])
+   local input  = genotype["cNodes"][index]["in"]
+   local output = genotype["cNodes"][index]["out"]
+
+   -- Create a new node
+   genotype["numNodeGenes"] = genotype["numNodeGenes"] + 1
+
+   -- Check if connections already exist
+   local globalInnovationIndex1 = checkInnovation(input, genotype["numNodeGenes"])
+   local globalInnovationIndex2 = checkInnovation(genotype["numNodeGenes"], output)
 
    -- Create two new connections
-   local connection1 = newConnectionNode(member, input, member["genotype"]["nodeGenes"][#member["genotype"]["nodeGenes"]]["id"])
-   local connection2 = newConnectionNode(member, member["genotype"]["nodeGenes"][#member["genotype"]["nodeGenes"]]["id"], output)
+   local connection1 = newConnectionNode(input, genotype["numNodeGenes"])
+   local connection2 = newConnectionNode(genotype["numNodeGenes"], output)
 
+   -- Check to see if these innovations already exist and if not create them
+   -- TODO(Grant): Check to see if I need to update any innovations in the pool
+   if globalInnovationIndex1 == 0 then
+      table.insert(GLOBAL_INNOVATIONS, { "in": input, "out": genotype["numNodeGenes"] })      
+      globalInnovationIndex1 = #GLOBAL_INNOVATIONS
+   end
+
+   if globalInnovationIndex2 == 0 then
+      table.insert(GLOBAL_INNOVATIONS, { "in": genotype["numNodeGenes"], "out": input })
+      globalInnovationIndex1 = #GLOBAL_INNOVATIONS      
+   end
+
+   -- Add the innovation to the connections
+   connection1["innovation"] = genotype["cNodes"][globalInnovationIndex1]
+   connection2["innovation"] = genotype["cNodes"][globalInnovationIndex2]
+
+   -- Change the weights
    connection1["weight"] = 1
-   connection2["weight"] = member["genotype"]["cNodes"][index]["weight"]
-
-   -- TODO: How do I figure out the input type? Is it always hidden?
-   table.insert(member["genotype"]["nodeGenes"], newNodeGene(#member["genotype"]["nodeGenes"]+1, 1))
+   connection2["weight"] = genotype["cNodes"][index]["weight"]
 
    -- Insert the two connections into the connection nodes table
-   table.insert(member["genotype"]["cNodes"], connection1)
-   table.insert(member["genotype"]["cNodes"], connection2)
-
+   genotype["cNodes"][connection1["innovation"]] = connection1
+   genotype["numCNodes"] = genotype["numCNodes"] + 1
+   
+   genotype["cNodes"][connection2["innovation"]] = connection2
+   genotype["numCNodes"] = genotype["numCNodes"] + 1
+   
    -- Deactivate old connection
-   member["genotype"]["cNodes"][index]["active"] = false
-
-   return member
+   genotype["cNodes"][index]["active"] = false
 end
 
-function addWeightMutation(member)
-   local index = math.random(1,#member["genotype"]["cNodes"])
+--[[
+   ADD_WEIGHT_MUTATION:
+Parameters:
+Return:
+--]]
+function addWeightMutation(genotype)
+   local index = math.random(genotype["numCNodes"])
 
    if math.random() > 0.5 then
-      member["genotype"]["cNodes"][index]["weight"] = math.random(-2, 2)
+      genotype["cNodes"][index]["weight"] = math.random(-2, 2)
    else
       if math.random() > 0.5 then
-	 member["genotype"]["cNodes"][index]["weight"] = member["genotype"]["cNodes"][index]["weight"] +
-	    math.random(0, member["mutationChances"]["weight"])
+	 genotype["cNodes"][index]["weight"] = genotype["cNodes"][index]["weight"] +
+	    math.random(0, member["mutationChances"]["weightStep"])
       else
-	 member["genotype"]["cNodes"][index]["weight"] = member["genotype"]["cNodes"][index]["weight"] -
-	    math.random(0, member["mutationChances"]["weight"])
+	 genotype["cNodes"][index]["weight"] = genotype["cNodes"][index]["weight"] -
+	    math.random(0, member["mutationChances"]["weightStep"])
       end
    end
 
    return member
 end
 
-function addEnableDisableMutation(member, enable)
-   local index = math.random(1,#member["genotype"]["cNodes"])
+--[[
+   ADD_ENABLE_DISABLE_MUTATION:
+Parameters:
+Return:
+--]]
+function addEnableDisableMutation(genotype, enable)
+   local index = math.random(genotype["numCNodes"])
    
    if enable then
-      member["genotype"]["cNodes"][index]["active"] = true
+      genotype["cNodes"][index]["active"] = true
    else
-      member["genotype"]["cNodes"][index]["active"] = false
+      genotype["cNodes"][index]["active"] = false
    end
 end
 
-function crossover()
-   --[[ Take "half" from one and take "half" from the other and combine them --]]
+--[[
+   CROSSOVER:
+--]]
+function crossover(memberA, memberB)
+   local child = newMember()
+   local sameFitness = false
+
+   -- Make sure memberA is the better member, unless they are the same then it doesn't matter.
+   if memberB["fitness"] > memberA["fitness"] then
+      local temp = memberB
+      memberB = memberA
+      memberA = temp
+   elseif memberA["fitness"] == memberB["fitness"] then
+      sameFitness = true
+   end
+
+   -- Get all the connection nodes of memberB
+   local memberBCNodes = {}
+   for _,cNode in pairs(memberB["genotype"]["cNodes"]) do
+      memberBCNodes[cNode["innovation"] = cNode
+   end
+
+   -- Add the nodes from the parents to the child
+   local nonUniqueBCNodes = {}
+   local nodesAdded = {}
+   for _,cNodeA in pairs(memberA["genotype"]["cNode"]) do
+      local cNodeB = memberBCNodes[cNodeA["innovation"]]
+
+      -- If there is a connection node from memberB that also exists in memberA, then we need to add it to non unique list
+      if cNodeB ~= nil then
+	 nonUniqueBCNodes[cNodeB["innovation"]] = cNodeB
+      end
+      
+      -- IF: Accepted cNodeB
+      -- ELSE: Accepted cNodeA
+      if cNodeB ~= nil and (sameFitness and math.random(2) == 1) then
+	 child["genotype"]["cNodes"][cNodeB["innovation"]] = copyCNode(cNodeB)
+	 child["genotype"]["numCNodes"] = child["genotype"]["numCNodes"] + 1
+	 
+	 if nodesAdded[cNodeB["in"]] ~= nil then
+	    child["genotype"]["numNodeGenes"] = child["genotype"]["numNodeGenes"] + 1
+	 end
+
+	 if nodesAdded[cNodeB["out"]] ~= nil then
+	    child["genotype"]["numNodeGenes"] = child["genotype"]["numNodeGenes"] + 1
+	 end
+      else
+	 child["genotype"]["cNodes"][cNodeA["innovation"]] = copyCNode(cNodeA)
+	 child["genotype"]["numCNodes"] = child["genotype"]["numCNodes"] + 1
+	 
+	 if nodesAdded[cNodeA["in"]] ~= nil then
+	    child["genotype"]["numNodeGenes"] = child["genotype"]["numNodeGenes"] + 1
+	 end
+
+	 if nodesAdded[cNodeA["out"]] ~= nil then
+	    child["genotype"]["numNodeGenes"] = child["genotype"]["numNodeGenes"] + 1
+	 end
+      end
+   end
+
+   -- Add the remaining disjoint and excess nodes from memberB
+   for _,cNode in pairs(memberBCNodes) do
+      if nonUniqueBCNodes[cNode["innovation"]] == nil then
+	 child["genotype"]["cNodes"][cNode["innovation"]] = copyCNode(cNode)
+      end
+   end
+
+   -- Copy over the mutation chances
+   for mutation,chance in pairs(memberA["mutationChances"]) do
+      child["mutationChances"][mutation] = chance
+   end
+
+   return child
+end
+
+function setController()
+
+end
+
+function writeGenotype(genotype)
+
+end
+
+function writeGeneration()
 
 end
 
