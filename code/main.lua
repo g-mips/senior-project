@@ -1,4 +1,4 @@
-SAVE_STATE = "SMB_World1-1.State"
+SAVE_STATE = "C:\\Users\\grant\\Documents\\School\\Fall 2016\\CS499B\\senior-project\\code\\SMB_World1-1.State"
 MAX_FITNESS = 0
 BUTTONS = {
    "P1 A",
@@ -6,20 +6,19 @@ BUTTONS = {
    "P1 Down",
    "P1 Left",
    "P1 Right",
-   "P1 Select",
-   "P1 Start",
-   "P1 Up",
-   --[[ I shouldn't care about these guys and possibly select --]]
-   "Power",
-   "Reset"
+   "P1 Up"
 }
 BOX_RADIUS = 6
+FRAMES = 0
+FURTHEST_X = 0
+TIMEOUT = 20
+CONTROLLER = joypad.get()
 
-NUM_INPUT_NODES  = ((BoxRadius*2+1)*(BoxRadius*2+1))+1
+NUM_INPUT_NODES  = ((BOX_RADIUS*2+1)*(BOX_RADIUS*2+1))+1
 NUM_OUTPUT_NODES = #BUTTONS
-MAX_NODES = 100000
+--MAX_NODES = 1000000
 
-POPULATION        = 200
+POPULATION        = 300
 
 WEIGHT_CHANCE     = 0.25
 CONNECTION_CHANCE = 2.0
@@ -27,568 +26,610 @@ NODE_CHANCE       = 0.50
 DISABLE_CHANCE    = 0.4
 ENABLE_CHANCE     = 0.2
 STEP              = 0.1
+CROSSOVER_CHANCE  = 0.75
+
+SPECIES_UNIQUE_CHANCE   = 2.0
+SPECIES_WEIGHTS_CHANCE  = 0.4
+SPECIES_THRESHOLD       = 1.0
+UNINTERESTING_THRESHOLD = 15
+
+form = forms.newform(200, 260, "Fitness")
+showNetwork = forms.checkbox(form, "Show Map", 5, 30)
+showMutationRates = forms.checkbox(form, "Show M-Rates", 5, 52)
+hideBanner = forms.checkbox(form, "Hide Banner", 5, 190)
 
 PerturbChance = 0.90
-CrossoverChance = 0.75
-
 BiasMutationChance = 0.40
 
 --[[
-   {
-       "in":  #,
-       "out": #
-   }
+   NEED TO WRITE:
+       - speciation
+       - ALL FILE AND DISPLAY FUNCTIONS I NEED TO JUST STRAIGHT UP COPY
+   NEED TO REWRITE:
+       - getRandomNode
 --]]
-GLOBAL_INNOVATIONS = {}
 
 --[[
-   NEW_POOL:
-   Creates a new pool with empty everything.
-Parameters:
-   None
-Return:
-   Returns the newly created pool
+
 --]]
-function newPool()
-   local pool = {
-      -- Table of species. Indexes are just numbers. Is #species safe.
-      "species": {},
-      "generation": 0,
-      "currentSpecies": 1,
-      "currentMember": 1,
-      "currentFrame": 0,
-      "maxFitness": 0
-   }
+function setupSequence(genotype)
+   local sequence = {}
+   local inserted = {}
+   
+   for i=1, genotype["numNodeGenes"], 1 do
+      for _,cNode in pairs(genotype["cNodes"]) do
+	 if (cNode["in"] == i or cNode["out"] == i) and cNode["active"] then
+	    if cNode["in"] == i and inserted[i] == nil then
+	       table.insert(sequence, i)
+	       inserted[i] = true
+	    end
+
+	    if cNode["out"] == i and inserted[i] == nil then
+	       table.insert(sequence, i)
+	       inserted[i] = true
+	    end
+	 end
+      end
+   end
+   
+   genotype["nodeSequence"] = sequence
+   
+   return genotype
+end
+
+--[[
+
+--]]
+function getConnectionValues(member, node)
+   local incomingNodes = {}
+   
+   for _,cNode in pairs(member["genotype"]["cNodes"]) do
+      if cNode["out"] == node then
+	 table.insert(incomingNodes, { ["weight"]= cNode["weight"], ["value"]= member["phenotype"][cNode["out"]]["value"] })
+      end
+   end
+
+   return incomingNodes
+end
+
+--[[
+   NO PROBLEMS HERE!
+--]]
+function sigmoid(x)
+   return 2 / (1 + math.exp(-4.9 * x)) - 1
+end
+
+--[[
+   IMPORTANT:
+   POSSIBLE PROBLEMS HERE!
+   I do NOT sort the cNodes.
+   I do NOT insert into incoming.
+--]]
+function generatePhenotype(member)
+   local phenotype = {}
+   local nodes = {}
+   
+   -- Set all the input nodes
+   for i=1, NUM_INPUT_NODES, 1 do
+      phenotype[i] = newNeuron()
+   end
+
+   -- Set all the output nodes
+   for i=NUM_INPUT_NODES+1, NUM_OUTPUT_NODES+NUM_INPUT_NODES, 1 do
+      phenotype[i] = newNeuron()
+   end
+
+   --[[local index = 1
+   for _,cNode in pairs(member["genotype"]["cNodes"]) do
+      
+      end--]]
+   
+   -- Set the active hidden nodes
+   for _,cNode in pairs(member["genotype"]["cNodes"]) do
+      if cNode["active"] then
+	 if phenotype[cNode["in"]] == nil then
+	    phenotype[cNode["in"]] = newNeuron()
+	 end
+
+	 if phenotype[cNode["out"]] == nil then
+	    phenotype[cNode["out"]] = newNeuron()
+	 end
+
+	 table.insert(phenotype[cNode["out"]]["incomingCNodes"], cNode)
+--	 	      { "weight": cNode["weight"], "value": member["phenotype"][cNode["out"]]["value"] })
+	 -- IMPORTANT:CURRENT METHOD: table.insert(phenotype[cNode["out"]]["incomingCNodes"], { })
+      end
+   end
+
+   member["phenotype"] = phenotype
+
+   member["genotype"] = setupSequence(member["genotype"])
+   
+   return member
+end
+
+-- TODO:NEWINNOVATION
+
+--[[
+   IMPORTANT: Possibly PROBLEMS HERE!
+   I do NOT check for correct amount of inputs
+   I try doing all of them at once (Including outputs)
+--]]
+function evaluatePhenotype(member, inputs)
+   table.insert(inputs, 1)
+
+   for i=1, NUM_INPUT_NODES, 1 do
+      member["phenotype"][i]["value"] = inputs[i]
+   end
+
+   for _,neuron in pairs(member["phenotype"]) do
+      local sum = 0
+      for i=1, #neuron["incomingCNodes"] do
+	 sum = sum + neuron["incomingCNodes"][i]["weight"] * member["phenotype"][neuron["incomingCNodes"][i]["in"]]["value"]
+      end
+
+      if #neuron["incomingCNodes"] > 0 then
+	 neuron["value"] = sigmoid(sum)
+      end
+   end
+
+   for i=1, NUM_OUTPUT_NODES, 1 do
+        if member["phenotype"][i+NUM_INPUT_NODES]["value"] > 0 then
+	 CONTROLLER[BUTTONS[i]] = true
+      else
+	 CONTROLLER[BUTTONS[i]] = false
+      end
+   end
+end
+
+--[[
+   NO PROBLEMS HERE!
+--]]
+function rankAllMembers(pool)
+   local allMembers = {}
+
+   for i=1, #pool["species"], 1 do
+      for j=1, #pool["species"][i]["members"], 1 do
+	 table.insert(allMembers, pool["species"][i]["members"][j])
+      end
+   end
+
+   table.sort(allMembers, function (memberA, memberB)
+		 return memberA["fitness"] < memberB["fitness"]
+   end)
+
+   for i=1, #allMembers, 1 do
+      allMembers[i]["rank"] = i
+   end
 
    return pool
 end
 
 --[[
-   NEW_SPECIES:
-   Creates a new species with empty everything.
-Parameters:
-   None
-Return:
-   Returns the newly created species
+   NO PROBLEMS HERE!
 --]]
-function newSpecies()
-   local species = {
-      "topFitness": 0,
-      -- Table of members. Indexes are just numbers. Is #members safe.
-      "members": {},
-      "averageFitness": 0
-   }
+function calculateAverageRank(species)
+   local sum = 0
+   
+   for _,member in pairs(species["members"]) do
+      sum = sum + member["rank"]
+   end
 
+   species["averageRank"] = sum / #species["members"]
+   
    return species
 end
 
 --[[
-   NEW_MEMBER:
-   Creates a new member with empty everything, except the mutationChances.
-Parameters:
-   None
-Return:
-   Returns the newly created member
+   NO PROBLEMS HERE!
 --]]
-function newMember()
-   local member = {
-      "genotype": {
-	 -- Table of connection nodes. Indexes represent the innovation numbers. Is NOT #cNodes safe
-	 "cNodes": {},
-	 -- How this works is that 1 - NUM_INPUT_NODES are input nodes.
-	 -- (MAX_NODES + NUM_OUTPUT_NODES) - MAX_NODES are the output nodes.
-	 -- The inbetween nodes are the hidden nodes
-	 "numNodeGenes": 0,
-	 "maxNodeGenes": 0,
-	 "numCNodes": 0
-		  },
-      "phenotype": {},
-      "mutationChances": {
-	 "weight": WEIGHT_CHANCE,
-	 "node": NODE_CHANCE,
-	 "connection": CONNECTION_CHANCE,
-	 -- TODO(Grant): Do I need this active mutationChance?
-	 "active": 0,
-	 "enable": ENABLE_CHANCE,
-	 "disable": DISABLE_CHANCE
-			 },
-      "fitness": 0,
-      "rank": 0,
-   }
+function sumAverageRanks(pool)
+   local sum = 0
 
-   return member
-end
+   for _,species in pairs(pool["species"]) do
+      sum = sum + species["averageRank"]
+   end
    
---[[
-   NEW_CONNECTION_NODE:
-   Creates a connection node with a node in of nodeIn and a node out of nodeOut.
-   Defaults to a 0 innovation. Should be changed to a real number.
-   Defaults to being active.
-   Defaults to having a weight of 0.
-Parameters:
-   nodeIn - The node that the connection starts with.
-   nodeOut - The node that the connection ends with.
-Return:
-   Returns the connectionNode created
---]]
-function newConnectionNode(nodeIn, nodeOut)
-   local connectionNode = {
-      "in": nodeIn,
-      "out": nodeOut,
-      "weight": 0,
-      "active": true,
-      "innovation": 0
-   }
-   
-   return connectionNode
+   return sum
 end
 
---[[
-   GET_RANDOM_NODE:
-   Gets a random node
---]]
-function getRandomNode(genotype, availableOutputs)
-   local node
-   local outputNodes = { "nodes": {}, "numNodes": 0 }
 
-   if #availableOutputs != 0 then
-      -- For choosing the output node
-      node = availableOutputs["nodes"][math.random(#availableOutputs["nodes"]-availableOutputs["numNodes"],#availableOutputs["nodes"])]
+function removeUnworthy(pool, removeType, sum)
+   local worthySpecies = {}
+
+   -- Loop through all the species backwards
+   for i=#pool["species"], 1, -1 do
+      local species = pool["species"][i]
+
+      -- UNINTERESTING SPECIES
+      if removeType == 0 then
+	 -- Sort members by fitness
+	 table.sort(species["members"], function(memberA, memberB)
+		       return (memberA["fitness"] > memberB["fitness"])
+	 end)
+
+	 -- Check to see if the best members is better than what was already recorded
+	 if species["members"][1]["fitness"] > species["bestFitness"] then
+	    species["bestFitness"] = species["members"][1]["fitness"]
+	    species["uninteresting"] = 0
+	 else
+	    species["uninteresting"] = species["uninteresting"] + 1
+	 end
+
+	 -- If the species is uninteresting then remove it
+	 if species["uninteresting"] >= UNINTERESTING_THRESHOLD and species["bestFitness"] < pool["bestFitness"] then
+	    table.remove(pool["species"], i)
+	 end
+      -- WEAK SPECIES
+      elseif removeType == 1 then
+	 local breed = math.floor(species["averageRank"] / sum * POPULATION)
+	 
+	 if breed < 1 then
+	    table.remove(pool["species"], i)
+	 end
+      -- REMOVE UNWORTHY MEMBERS OF SPECIES
+      elseif removeType >= 2 then
+	 local remaining = #species["members"]
+	 table.sort(species["members"], function(memberA, memberB)
+		       return (memberA["fitness"] > memberB["fitness"])
+	 end)
+
+	 if removeType == 2 then
+	    remaining = math.ceil(#species["members"]/2)
+	 elseif removeType == 3 then
+	    remaining = 1
+	 end
+
+	 while #species["members"] > remaining do
+	    table.remove(species["members"])
+	 end
+      end
+   end
+
+   return pool
+end
+
+--[[
+
+--]]
+function breed(species)
+   local child = {}
+   if math.random() < CROSSOVER_CHANCE then
+      local memberA = species["members"][math.random(1, #species["members"])]
+      local memberB = species["members"][math.random(1, #species["members"])]
+      child = crossover(memberA, memberB)
    else
-      -- For choosing the input node 
-      local foundNode
-
-      -- Keep going until a valid node is found
-      repeat
-	 foundNode = true
-
-	 -- Generate the outputNodes
-	 for i=NUM_INPUT_NODES+1,genotype["numNodeGenes"],1 do
-	    outputNodes["nodes"][i] = NUM_INPUT_NODES+i
-	    outputNodes["numNodes"] = outputNodes["numNodes"] + 1
-	 end
-
-	 -- Find a random node that is not an output node
-	 repeat
-	    node = math.random(genotype["numNodeGenes"])
-	 until (node > NUM_INPUT_NODES + NUM_OUTPUT_NODES or node <= NUM_INPUT_NODES)
-
-	 -- Remove nodes from outputNodes table
-	 for i=1, genotype["numCNodes"], 1 do
-	    if genotype["cNodes"][i]["in"] == node then
-	       if outputNodes["nodes"][genotype["cNodes"][i]["out"]] ~= nil then
-		  table.remove(outputNodes["nodes"], genotype["cNodes"][i]["out"])
-		  outputNodes["numNodes"] = outputNodes["numNodes"] - 1
-	       end
-	    end
-	 end
-
-	 -- Check if there are no outputNodes left
-	 if outputNodes["numNodes"] == 0 then
-	    foundNode = false
-	 end
-      until (foundNode)
+      local member = species["members"][math.random(1, #species["members"])]
+      child = copyMember(member)
    end
-
-   return node, outputNodes
+       
+   child = mutate(child)
+       
+   return child
 end
 
 --[[
-   MUTATE:
-Parameters:
-   member - This is the current member/genome that will be mutated
-Return:
-   member - The mutated member/genome
-   TODO: TEST!
+
 --]]
-function mutate(member)
-   -- Change rate of mutation chances
-   
-   -- Add Connection: Single new connection gene with a random weight is added connecting two previously unconnected nodes
-   if math.random() > member["mutationChances"]["connection"] then
-      addConnectionMutation(member["genotype"])
-   end
-   
-   --[[ Add Node: An existing connection is split and the new node placed where the old connection used to be. Old: disabled. Two New: Added 
-        New connection leading into the new node receives a weight of 1, and the new connection leading out receives the same weight as the
-        old connection.
-   --]]
-   if math.random() > member["mutationChances"]["node"] then
-      addNodeMutation(member["genotype"])
+function beginNextGeneration(pool)
+   local uninteresting = 0
+   local weak = 1
+   local halfMembers = 2
+   local allButOneMember = 3
+
+   -- Begin straining out bad species and members
+   -- Cut out the bottom half of each species based on fitness
+   pool = removeUnworthy(pool, halfMembers, 0)
+
+   -- Rank the members and then remove uninteresting species
+   pool = rankAllMembers(pool)
+   pool = removeUnworthy(pool, uninteresting, 0)
+
+   -- Rerank the members and then calculate the average rank of each species
+   pool = rankAllMembers(pool)
+   for _,species in pairs(pool["species"]) do
+      species = calculateAverageRank(species)
+      --print("AVERAGE RANK: " .. species["averageRank"])
    end
 
-   if math.random() > member["mutationChances"]["weight"] then
-      addWeightMutation(member["genotype"])
-   end
-   
-   -- TODO(Grant): Alter activation response
-   -- NOTE(Grant): I may not need this
-   if math.random() > member["mutationChances"]["active"] then
+   -- Remove "weak" species based on average ranks
+   pool = removeUnworthy(pool, weak, sumAverageRanks(pool))
 
+   -- Sum up the average ranks of the remaining species
+   local sum = sumAverageRanks(pool)
+
+   -- Breed new children
+   local newMembers = {}
+   for i=1, #pool["species"], 1 do
+      local breedNum = math.floor(pool["species"][i]["averageRank"] / sum * POPULATION) - 1
+      for j=1, breedNum, 1 do
+	 table.insert(newMembers, breed(pool["species"][i]))
+      end
    end
 
-   if math.random() > member["mutationChances"]["enable"] then
-      addEnableDisableMutation(member["genotype"], true)
+   -- Cut out all members but one of each species
+   pool = removeUnworthy(pool, allButOneMember, 0)
+
+   -- Breed more new children. Do it until the POPULATION amount
+   while #newMembers + #pool["species"] < POPULATION do
+      local species = pool["species"][math.random(1, #pool["species"])]
+      table.insert(newMembers, breed(species))
    end
 
-   if math.random() > member["mutationChances"]["disable"] then
-      addEnableDisableMutation(member["genotype"], false)
+   -- Finally add the newMembers to their respecitve species
+   for i=1, #newMembers, 1 do
+      pool = addMemberToSpecies(pool, newMembers[i])
    end
+
+   -- Go to the next generation
+   pool["generation"] = pool["generation"] + 1
+
+   -- writeFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
+
+   return pool
 end
 
-function checkInnovation(nodeIn, nodeOut)
-   local globalInnovationIndex = 0
+function nextMember(pool)
+   pool["currentMember"] = pool["currentMember"] + 1
+   if pool["currentMember"] > #pool["species"][pool["currentSpecies"]]["members"] then
+      pool["currentMember"] = 1
+      pool["currentSpecies"] = pool["currentSpecies"]+1
+      if pool["currentSpecies"] > #pool["species"] then
+	 pool = beginNextGeneration(pool)
+	 pool["currentSpecies"] = 1
+      end
+   end
+   
+   return pool
+end
 
-   -- Check to see if the innovation already exists
-   for i=1, #GLOBAL_INNOVATIONS, 1 do
-      if GLOBAL_INNOVATIONS[i]["in"] == nodeIn and GLOBAL_INNOVATIONS[i]["out"] == nodeOut then
-	 globalInnovationIndex = i
+function computeFitness(member)
+   local fitness = FURTHEST_X - FRAMES / 2
+
+   if FURTHEST_X > 3186 then
+      fitness = fitness + 1000
+   end
+   
+   if fitness == 0 then
+      fitness = -1
+   end
+   
+   return fitness
+end
+
+--[[
+   NO PROBLEMS HERE!
+--]]
+function countUnique(cNodesA, cNodesB)
+   local numUniqueMembers = 0
+   for _,cNode in pairs(cNodesA) do
+      if cNodesB[cNode["innovation"]] == nil then
+	 numUniqueMembers = numUniqueMembers + 1
+      end
+   end
+
+   for _,cNode in pairs(cNodesB) do
+      if cNodesA[cNode["innovation"]] == nil then
+	 numUniqueMembers = numUniqueMembers + 1
+      end      
+   end
+
+   return numUniqueMembers
+end
+
+--[[
+   NO PROBLEMS HERE!
+--]]
+function weights(cNodesA, cNodesB, numA, numB)
+   local innovationsOfMemB = {}
+   for _,cNode in pairs(cNodesB) do
+      innovationsOfMemB[cNode["innovation"]] = cNode
+   end
+ 
+   local sum = 0
+   local totalNumber = 0
+   for _,cNode in pairs(cNodesA) do
+      if innovationsOfMemB[cNode["innovation"]] ~= nil then
+	 local cNode2 = innovationsOfMemB[cNode["innovation"]]
+	 sum = sum + math.abs(cNode["weight"] - cNode2["weight"])
+	 totalNumber = totalNumber + 1
+      end
+   end
+       
+   return sum / totalNumber
+end
+
+--[[
+   NO PROBLEMS HERE!
+--]]
+function isPartOfTheSame(memberA, memberB)
+   local numMembers = math.max(memberA["genotype"]["numCNodes"], memberB["genotype"]["numCNodes"])
+   local weightedUniquePercentage = SPECIES_UNIQUE_CHANCE * (countUnique(memberA["genotype"]["cNodes"], memberB["genotype"]["cNodes"]) / numMembers)
+   local weightedWeightsPercentage = SPECIES_WEIGHTS_CHANCE * weights(memberA["genotype"]["cNodes"], memberB["genotype"]["cNodes"])
+   
+   return weightedUniquePercentage + weightedWeightsPercentage < SPECIES_THRESHOLD
+end
+
+function addMemberToSpecies(pool, member)
+   local found = false
+
+   for _,species in pairs(pool["species"]) do
+      if isPartOfTheSame(member, species["members"][1]) then
+	 table.insert(species["members"], member)
+	 found = true
 	 break
       end
    end
 
-   return globalInnovationIndex
+   -- If the species was not found, then create a new species
+   if not found then
+      local species = newSpecies()
+      table.insert(species["members"], member)
+      table.insert(pool["species"], species)
+   end
+
+   return pool
 end
 
 --[[
-   ADD_CONNECTION_MUTATION:
-   
-   Finished!
-   TODO: TEST!
-
-Parameters:
-Return:
-
+   SET_UP_INITIAL_C_NODES:
 --]]
-function addConnectionMutation(genotype)
-   local nodeIn
-   local outputNodes
-   local nodeOut
-   local globalInnovationIndex
-
-   -- Get an input and an output node and use them to check if a connection between them already exists.   
-   nodeIn, outputNodes   = getRandomNode(genotype, {})
-   nodeOut, outputNodes  = getRandomNode(genotype, outputNodes)
-   globalInnovationIndex = checkInnovation(nodeIn, nodeOut)
-
-   -- If the innovation exists, then just change it's weight
-   -- If it doesn't exist, create it
-   if globalInnovationIndex > 0 then
-      genotype["cNodes"][globalInnovationIndex]["weight"] = math.random() + math.random(-2, 2)
-   else
-      local connectionNode = newConnectionNode(nodeIn, nodeOut)
-
-      -- Insert the new innovation to the global list (which increments the number of innovations count)
-      table.insert(GLOBAL_INNOVATIONS, { "in": nodeIn, "out": nodeOut })
-
-      -- Add the new innovation to the connection node and create a random weight
-      connectionNode["innovation"] = #GLOBAL_INNOVATIONS
-      connectionNode["weight"] = math.random() + math.random(-2, 2)
-   
-      -- Add the new connection node to the genotype and increase the connection node count
-      genotype["cNodes"][connectionNode["innovation"]] = connectionNode
-      genotype["numCNodes"] = genotype["numCNodes"] + 1
-   end
-end
-
---[[
-   ADD_NODE_MUTATION:
-
-   Finished!
-   TODO: TEST!
-
-Parameters:
-Return:
-
---]]
-function addNodeMutation(genotype)
-   -- Get a random connection node
-   local index  = math.random(genotype["numCNodes"])
-   local input  = genotype["cNodes"][index]["in"]
-   local output = genotype["cNodes"][index]["out"]
-
-   -- Create a new node
-   genotype["numNodeGenes"] = genotype["numNodeGenes"] + 1
-
-   -- Check if connections already exist
-   local globalInnovationIndex1 = checkInnovation(input, genotype["numNodeGenes"])
-   local globalInnovationIndex2 = checkInnovation(genotype["numNodeGenes"], output)
-
-   -- Create two new connections
-   local connection1 = newConnectionNode(input, genotype["numNodeGenes"])
-   local connection2 = newConnectionNode(genotype["numNodeGenes"], output)
-
-   -- Check to see if these innovations already exist and if not create them
-   -- TODO(Grant): Check to see if I need to update any innovations in the pool
-   if globalInnovationIndex1 == 0 then
-      table.insert(GLOBAL_INNOVATIONS, { "in": input, "out": genotype["numNodeGenes"] })      
-      globalInnovationIndex1 = #GLOBAL_INNOVATIONS
-   end
-
-   if globalInnovationIndex2 == 0 then
-      table.insert(GLOBAL_INNOVATIONS, { "in": genotype["numNodeGenes"], "out": input })
-      globalInnovationIndex1 = #GLOBAL_INNOVATIONS      
-   end
-
-   -- Add the innovation to the connections
-   connection1["innovation"] = genotype["cNodes"][globalInnovationIndex1]
-   connection2["innovation"] = genotype["cNodes"][globalInnovationIndex2]
-
-   -- Change the weights
-   connection1["weight"] = 1
-   connection2["weight"] = genotype["cNodes"][index]["weight"]
-
-   -- Insert the two connections into the connection nodes table
-   genotype["cNodes"][connection1["innovation"]] = connection1
-   genotype["numCNodes"] = genotype["numCNodes"] + 1
-   
-   genotype["cNodes"][connection2["innovation"]] = connection2
-   genotype["numCNodes"] = genotype["numCNodes"] + 1
-   
-   -- Deactivate old connection
-   genotype["cNodes"][index]["active"] = false
-end
-
---[[
-   ADD_WEIGHT_MUTATION:
-Parameters:
-Return:
---]]
-function addWeightMutation(genotype)
-   local index = math.random(genotype["numCNodes"])
-
-   if math.random() > 0.5 then
-      genotype["cNodes"][index]["weight"] = math.random(-2, 2)
-   else
-      if math.random() > 0.5 then
-	 genotype["cNodes"][index]["weight"] = genotype["cNodes"][index]["weight"] +
-	    math.random(0, member["mutationChances"]["weightStep"])
-      else
-	 genotype["cNodes"][index]["weight"] = genotype["cNodes"][index]["weight"] -
-	    math.random(0, member["mutationChances"]["weightStep"])
+function setUpInitialCNodes(member)
+   for i=1, NUM_INPUT_NODES, 1 do
+      for j=1, NUM_OUTPUT_NODES, 1 do
+	 local cNode = newConnectionNode(i, j+NUM_INPUT_NODES)
+	 cNode["weight"] = math.random() + math.random(-2, 2)
+	 table.insert(GLOBAL_INNOVATIONS, { ["in"]= i, ["out"]= j+NUM_INPUT_NODES })
+	 cNode["innovation"] = #GLOBAL_INNOVATIONS
+	 member["genotype"]["cNodes"][#GLOBAL_INNOVATIONS] = cNode
+	 member["genotype"]["numCNodes"] = member["genotype"]["numCNodes"] + 1
       end
    end
 
    return member
 end
 
---[[
-   ADD_ENABLE_DISABLE_MUTATION:
-Parameters:
-Return:
---]]
-function addEnableDisableMutation(genotype, enable)
-   local index = math.random(genotype["numCNodes"])
-   
-   if enable then
-      genotype["cNodes"][index]["active"] = true
-   else
-      genotype["cNodes"][index]["active"] = false
+function clearJoypad()
+   for i=1, #BUTTONS, 1 do
+      CONTROLLER[BUTTONS[i]] = false
    end
+   joypad.set(CONTROLLER)
 end
 
---[[
-   CROSSOVER:
---]]
-function crossover(memberA, memberB)
-   local child = newMember()
-   local sameFitness = false
-
-   -- Make sure memberA is the better member, unless they are the same then it doesn't matter.
-   if memberB["fitness"] > memberA["fitness"] then
-      local temp = memberB
-      memberB = memberA
-      memberA = temp
-   elseif memberA["fitness"] == memberB["fitness"] then
-      sameFitness = true
-   end
-
-   -- Get all the connection nodes of memberB
-   local memberBCNodes = {}
-   for _,cNode in pairs(memberB["genotype"]["cNodes"]) do
-      memberBCNodes[cNode["innovation"] = cNode
-   end
-
-   -- Add the nodes from the parents to the child
-   local nonUniqueBCNodes = {}
-   local nodesAdded = {}
-   for _,cNodeA in pairs(memberA["genotype"]["cNode"]) do
-      local cNodeB = memberBCNodes[cNodeA["innovation"]]
-
-      -- If there is a connection node from memberB that also exists in memberA, then we need to add it to non unique list
-      if cNodeB ~= nil then
-	 nonUniqueBCNodes[cNodeB["innovation"]] = cNodeB
-      end
-      
-      -- IF: Accepted cNodeB
-      -- ELSE: Accepted cNodeA
-      if cNodeB ~= nil and (sameFitness and math.random(2) == 1) then
-	 child["genotype"]["cNodes"][cNodeB["innovation"]] = copyCNode(cNodeB)
-	 child["genotype"]["numCNodes"] = child["genotype"]["numCNodes"] + 1
+function evaluation(member)
+   local inputs = getInputs()
 	 
-	 if nodesAdded[cNodeB["in"]] ~= nil then
-	    child["genotype"]["numNodeGenes"] = child["genotype"]["numNodeGenes"] + 1
-	 end
+   evaluatePhenotype(member, inputs)
 
-	 if nodesAdded[cNodeB["out"]] ~= nil then
-	    child["genotype"]["numNodeGenes"] = child["genotype"]["numNodeGenes"] + 1
-	 end
-      else
-	 child["genotype"]["cNodes"][cNodeA["innovation"]] = copyCNode(cNodeA)
-	 child["genotype"]["numCNodes"] = child["genotype"]["numCNodes"] + 1
-	 
-	 if nodesAdded[cNodeA["in"]] ~= nil then
-	    child["genotype"]["numNodeGenes"] = child["genotype"]["numNodeGenes"] + 1
-	 end
-
-	 if nodesAdded[cNodeA["out"]] ~= nil then
-	    child["genotype"]["numNodeGenes"] = child["genotype"]["numNodeGenes"] + 1
-	 end
-      end
+   if CONTROLLER["P1 Left"] and CONTROLLER["P1 Right"] then
+      CONTROLLER["P1 Left"]  = false
+      CONTROLLER["P1 Right"] = false
    end
-
-   -- Add the remaining disjoint and excess nodes from memberB
-   for _,cNode in pairs(memberBCNodes) do
-      if nonUniqueBCNodes[cNode["innovation"]] == nil then
-	 child["genotype"]["cNodes"][cNode["innovation"]] = copyCNode(cNode)
-      end
+   if CONTROLLER["P1 Up"] and CONTROLLER["P1 Down"] then
+      CONTROLLER["P1 Up"]   = false
+      CONTROLLER["P1 Down"] = false
    end
-
-   -- Copy over the mutation chances
-   for mutation,chance in pairs(memberA["mutationChances"]) do
-      child["mutationChances"][mutation] = chance
-   end
-
-   return child
+	
+   joypad.set(CONTROLLER)
 end
 
-function setController()
+function beginRun(pool)
+   savestate.load(SAVE_STATE)
+   FURTHEST_X = 0
+   FRAMES = 0
+   TIMEOUT = 20
+   clearJoypad()
 
-end
+   local species = pool["species"][pool["currentSpecies"]]
+   local member = species["members"][pool["currentMember"]]
+   member = generatePhenotype(member)
+   evaluation(member)
 
-function writeGenotype(genotype)
-
-end
-
-function writeGeneration()
-
+   return pool
 end
 
 --[[
-Should this only be called once?
-- Genomes (Linear representations of network connectivity) [IN OTHER WORDS: The Neural Network]
-
-   - Each genome includes a list of connection genes, each of which refers to two node genes being connected.
-   - Node genes provide a list of inputs, hidden nodes, and outputs that can be connected.
-   - Each connection gene specifies the in-node, the out-node, the weight of the connection, whether or not the
-     connection gene is expressed (an enable bit), and an innovation number, which allows finding corresponding genes.
-
-RETURN 
-   LIST
-   [
-         CONNECT_GENE_1: 
-         [
-              IN - The In Node
-              OUT - The Out Node
-              Weight - The weight between the two nodes
-              Enable Bit - If the connection is enabled or not
-              Innovation Number - ID?
-         ]
-         ...
-         CONNECT_GENE_N
-   ]
-              
+   CREATE_INITIAL_POPULATION:
 --]]
-function generateGenotype()
-   local genotype = { }
-   
-   return genotype
-end
+function createInitialPopulation()
+   local pool = newPool()
 
-function displayPhenotype(genotype)
+   for i=1, POPULATION, 1 do
+      local member = newMember()
+      member = mutate(member)
+      pool = addMemberToSpecies(pool, member)
+   end
 
- end
+   pool = beginRun(pool)
 
-function displayInformation()
-   local x = 1
-   gui.text(x,  30, "Enemy 1 Loaded: " .. mainmemory.readbyte(0x000F))
-   gui.text(x,  50, "Enemy 2 Loaded: " .. mainmemory.readbyte(0x0010))
-   gui.text(x,  70, "Enemy 3 Loaded: " .. mainmemory.readbyte(0x0011))
-   gui.text(x,  90, "Enemy 4 Loaded: " .. mainmemory.readbyte(0x0012))
-   gui.text(x, 110, "Mario X Pos 1 : " .. mainmemory.readbyte(0x0086))
-   gui.text(x, 130, "Mario X Pos 2 : " .. mainmemory.readbyte(0x006D))
-end
-
-function calculateFitness()
-
+   return pool
 end
 
 function main()
-   local genotype = generateGenotype()
-   local frames = 0
-   local fitness = 0
-   local prev_fitness = 0
-   local controller = joypad.get()
-   print(controller) 
-
    --[[ Step 1 (Variation)
       Create a population (species) of N elements with random genetic material
       Heredity
       Variation
       Selection
    --]]
-   createInitialPopulation()
-
+   local pool = createInitialPopulation()
+   
    while true do
-      --[[ Call display information every frame --]]
-      displayInformation()
-
-      --[[ Step 2 (Selection)
-	 Calculate Fitness for N elements 
-      --]]
-      calculateFitness()
-      buildPool()
-      
-      --[[ Step 3 (Selection/Heredity)
-	 Population / Selection
-	 3.1 Pick "two" parents
-	 3.2 Make a new element
-	 3.2.1 Crossover
-	 3.2.2 Mutation
-	 3.3 Add a child to the new population
-      --]]
-      pickParents()
-      crossover()
-      mutate()
-      
-      if (frames > 60 and prev_fitness == fitness) then
-	 --[[frames = 0 --]]
-	 savestate.load(SAVE_STATE)
-	 fitness = fitness + 1
-	 
---[[      elseif (prev_fitness ~= fitness)
-      then
-   frames = 0--]]
+      local backgroundColor = 0xD0FFFFFF
+      if not forms.ischecked(hideBanner) then
+	 gui.drawBox(0, 0, 300, 26, backgroundColor, backgroundColor)
       end
 
-      controller["P1 Right"] = "True"
-      joypad.set(controller)
-      if (frames == 0) then
-	 print("START BUTTONS")
-	 for i=1,10,1 do
-	    print(i)
-	    print(controller[BUTTONS[i]])
+      local species = pool["currentSpecies"]
+      local member  = pool["currentMember"]
+
+      if forms.ischecked(showNetwork) then
+	 displayMember(pool["species"][species]["members"][member])
+      end      
+      --[[ Step 2 (Selection)
+	 Calculate Fitness for N elements 
+	 This will run the game for each of the N elements
+      --]]
+      
+      -- Evaluate the phenotype (network) and get the outputs (controller) then set the controller to it
+      if FRAMES % 5 == 0 then
+	 evaluation(pool["species"][species]["members"][member])
+      end
+
+      joypad.set(CONTROLLER)
+      
+      -- Get Mario's position after evaluating the phenotype and check to see if there was an improvement.
+      local pos = getAllPositions()
+      if pos["mX"] > FURTHEST_X then
+	 FURTHEST_X = pos["mX"]
+	 TIMEOUT = 20
+      end
+      
+      -- Lower the timeout and (using the bonusTime) check to see if we ran out of time for Mario to move
+      TIMEOUT = TIMEOUT - 1
+      
+      local bonusTime = FRAMES / 4
+      if TIMEOUT + bonusTime <= 0 then
+	 pool["species"][species]["members"][member]["fitness"] = computeFitness(pool["species"][species]["members"][member])
+
+	 if pool["species"][species]["members"][member]["fitness"] > pool["bestFitness"] then
+	    pool["bestFitness"] = pool["species"][species]["members"][member]["fitness"]
+	    -- TODO: Write to file
+	 end
+
+	 console.writeline("Gen " .. pool["generation"] .. " species " .. pool["currentSpecies"] .. " member " .. pool["currentMember"] .. " fitness: " .. pool["species"][species]["members"][member]["fitness"])
+	 pool["currentSpecies"] = 1
+	 pool["currentMember"] = 1
+	 
+	 while pool["species"][pool["currentSpecies"]]["members"][pool["currentMember"]]["fitness"] ~= 0 do
+	    pool = nextMember(pool)
+	 end
+	 beginRun(pool)
+      end
+      
+      --[[ Call display information every frame --]]
+      local measured = 0
+      local total = 0
+      for _,species in pairs(pool["species"]) do
+	 for _,member in pairs(species["members"]) do
+	    total = total + 1
+	    if member["fitness"] ~= 0 then
+	       measured = measured + 1
+	    end
 	 end
       end
       
-
-      --[[ Replace old population with new population --]]
+      if not forms.ischecked(hideBanner) then
+	 gui.drawText(0, 0, "Gen " .. pool["generation"] .. " species " .. pool["currentSpecies"] .. " genome " .. pool["currentMember"] .. " (" .. math.floor(measured/total*100) .. "%)", 0xFF000000, 11)
+	 gui.drawText(0, 12, "Fitness: " .. math.floor(FURTHEST_X - (FRAMES) / 2 - (TIMEOUT + bonusTime)*2/3), 0xFF000000, 11)
+	 gui.drawText(100, 12, "Max Fitness: " .. math.floor(pool["bestFitness"]), 0xFF000000, 11)
+      end
       
       --[[ Advance a frame --]]
-      frames = frames + 1
+      FRAMES = FRAMES + 1
       emu.frameadvance()
    end
 end
 
-savestate.load(SAVE_STATE)
 main()
+--test()
