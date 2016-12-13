@@ -1,5 +1,7 @@
-SAVE_STATE = "C:\\Users\\grant\\Documents\\School\\Fall 2016\\CS499B\\senior-project\\code\\SMB_World1-1.State"
-MAX_FITNESS = 0
+SAVE_STATE = "SMB1.1.state"
+END_GAME = false
+WRITE = false
+
 BUTTONS = {
    "P1 A",
    "P1 B",
@@ -16,7 +18,6 @@ CONTROLLER = joypad.get()
 
 NUM_INPUT_NODES  = ((BOX_RADIUS*2+1)*(BOX_RADIUS*2+1))+1
 NUM_OUTPUT_NODES = #BUTTONS
---MAX_NODES = 1000000
 
 POPULATION        = 300
 
@@ -38,16 +39,11 @@ showNetwork = forms.checkbox(form, "Show Map", 5, 30)
 showMutationRates = forms.checkbox(form, "Show M-Rates", 5, 52)
 hideBanner = forms.checkbox(form, "Hide Banner", 5, 190)
 
-PerturbChance = 0.90
-BiasMutationChance = 0.40
-
 --[[
-   NEED TO WRITE:
-       - speciation
-       - ALL FILE AND DISPLAY FUNCTIONS I NEED TO JUST STRAIGHT UP COPY
-   NEED TO REWRITE:
-       - getRandomNode
+   in
+   out
 --]]
+GLOBAL_INNOVATIONS = {}
 
 --[[
 
@@ -93,37 +89,24 @@ function getConnectionValues(member, node)
 end
 
 --[[
-   NO PROBLEMS HERE!
+
 --]]
 function sigmoid(x)
    return 2 / (1 + math.exp(-4.9 * x)) - 1
 end
 
 --[[
-   IMPORTANT:
-   POSSIBLE PROBLEMS HERE!
-   I do NOT sort the cNodes.
-   I do NOT insert into incoming.
+
 --]]
 function generatePhenotype(member)
    local phenotype = {}
    local nodes = {}
    
-   -- Set all the input nodes
-   for i=1, NUM_INPUT_NODES, 1 do
+   -- Set all the input nodes and output nodes
+   for i=1, NUM_INPUT_NODES+NUM_OUTPUT_NODES, 1 do
       phenotype[i] = newNeuron()
    end
 
-   -- Set all the output nodes
-   for i=NUM_INPUT_NODES+1, NUM_OUTPUT_NODES+NUM_INPUT_NODES, 1 do
-      phenotype[i] = newNeuron()
-   end
-
-   --[[local index = 1
-   for _,cNode in pairs(member["genotype"]["cNodes"]) do
-      
-      end--]]
-   
    -- Set the active hidden nodes
    for _,cNode in pairs(member["genotype"]["cNodes"]) do
       if cNode["active"] then
@@ -136,54 +119,55 @@ function generatePhenotype(member)
 	 end
 
 	 table.insert(phenotype[cNode["out"]]["incomingCNodes"], cNode)
---	 	      { "weight": cNode["weight"], "value": member["phenotype"][cNode["out"]]["value"] })
-	 -- IMPORTANT:CURRENT METHOD: table.insert(phenotype[cNode["out"]]["incomingCNodes"], { })
       end
    end
-
    member["phenotype"] = phenotype
 
+   -- May be able to get rid of this
    member["genotype"] = setupSequence(member["genotype"])
    
    return member
 end
 
--- TODO:NEWINNOVATION
-
 --[[
-   IMPORTANT: Possibly PROBLEMS HERE!
-   I do NOT check for correct amount of inputs
-   I try doing all of them at once (Including outputs)
+
 --]]
 function evaluatePhenotype(member, inputs)
+   -- This gets the bias input
    table.insert(inputs, 1)
 
+   -- Set up all the input nodes
    for i=1, NUM_INPUT_NODES, 1 do
       member["phenotype"][i]["value"] = inputs[i]
    end
 
+   -- Go through all the neurons of the phenotype (network) and set up the value for each neuron.
    for _,neuron in pairs(member["phenotype"]) do
+      -- Why does this work?!?!?!
       local sum = 0
       for i=1, #neuron["incomingCNodes"] do
 	 sum = sum + neuron["incomingCNodes"][i]["weight"] * member["phenotype"][neuron["incomingCNodes"][i]["in"]]["value"]
       end
 
+      -- We only want to change the value of non-input nodes (or nodes that have incoming nodes)
       if #neuron["incomingCNodes"] > 0 then
 	 neuron["value"] = sigmoid(sum)
       end
    end
 
    for i=1, NUM_OUTPUT_NODES, 1 do
-        if member["phenotype"][i+NUM_INPUT_NODES]["value"] > 0 then
+      if member["phenotype"][i+NUM_INPUT_NODES]["value"] > 0 then
 	 CONTROLLER[BUTTONS[i]] = true
       else
 	 CONTROLLER[BUTTONS[i]] = false
       end
    end
+
+   return member
 end
 
 --[[
-   NO PROBLEMS HERE!
+
 --]]
 function rankAllMembers(pool)
    local allMembers = {}
@@ -206,7 +190,7 @@ function rankAllMembers(pool)
 end
 
 --[[
-   NO PROBLEMS HERE!
+
 --]]
 function calculateAverageRank(species)
    local sum = 0
@@ -221,7 +205,7 @@ function calculateAverageRank(species)
 end
 
 --[[
-   NO PROBLEMS HERE!
+
 --]]
 function sumAverageRanks(pool)
    local sum = 0
@@ -233,7 +217,9 @@ function sumAverageRanks(pool)
    return sum
 end
 
+--[[
 
+--]]
 function removeUnworthy(pool, removeType, sum)
    local worthySpecies = {}
 
@@ -329,7 +315,6 @@ function beginNextGeneration(pool)
    pool = rankAllMembers(pool)
    for _,species in pairs(pool["species"]) do
       species = calculateAverageRank(species)
-      --print("AVERAGE RANK: " .. species["averageRank"])
    end
 
    -- Remove "weak" species based on average ranks
@@ -364,8 +349,10 @@ function beginNextGeneration(pool)
    -- Go to the next generation
    pool["generation"] = pool["generation"] + 1
 
-   -- writeFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
-
+   if WRITE then
+      writeFile("backup." .. pool["generation"] .. ".SMB1.1", pool)
+   end
+   
    return pool
 end
 
@@ -373,7 +360,8 @@ function nextMember(pool)
    pool["currentMember"] = pool["currentMember"] + 1
    if pool["currentMember"] > #pool["species"][pool["currentSpecies"]]["members"] then
       pool["currentMember"] = 1
-      pool["currentSpecies"] = pool["currentSpecies"]+1
+      pool["currentSpecies"] = pool["currentSpecies"] + 1
+      
       if pool["currentSpecies"] > #pool["species"] then
 	 pool = beginNextGeneration(pool)
 	 pool["currentSpecies"] = 1
@@ -388,8 +376,11 @@ function computeFitness(member)
 
    if FURTHEST_X > 3186 then
       fitness = fitness + 1000
+      client.closerom()
+      END_GAME = true
    end
-   
+
+   -- This should never happen
    if fitness == 0 then
       fitness = -1
    end
@@ -398,7 +389,7 @@ function computeFitness(member)
 end
 
 --[[
-   NO PROBLEMS HERE!
+
 --]]
 function countUnique(cNodesA, cNodesB)
    local numUniqueMembers = 0
@@ -418,9 +409,9 @@ function countUnique(cNodesA, cNodesB)
 end
 
 --[[
-   NO PROBLEMS HERE!
+
 --]]
-function weights(cNodesA, cNodesB, numA, numB)
+function averageOfSummedDiffsOfWeights(cNodesA, cNodesB, numA, numB)
    local innovationsOfMemB = {}
    for _,cNode in pairs(cNodesB) do
       innovationsOfMemB[cNode["innovation"]] = cNode
@@ -440,12 +431,12 @@ function weights(cNodesA, cNodesB, numA, numB)
 end
 
 --[[
-   NO PROBLEMS HERE!
+
 --]]
 function isPartOfTheSame(memberA, memberB)
    local numMembers = math.max(memberA["genotype"]["numCNodes"], memberB["genotype"]["numCNodes"])
    local weightedUniquePercentage = SPECIES_UNIQUE_CHANCE * (countUnique(memberA["genotype"]["cNodes"], memberB["genotype"]["cNodes"]) / numMembers)
-   local weightedWeightsPercentage = SPECIES_WEIGHTS_CHANCE * weights(memberA["genotype"]["cNodes"], memberB["genotype"]["cNodes"])
+   local weightedWeightsPercentage = SPECIES_WEIGHTS_CHANCE * averageOfSummedDiffsOfWeights(memberA["genotype"]["cNodes"], memberB["genotype"]["cNodes"])
    
    return weightedUniquePercentage + weightedWeightsPercentage < SPECIES_THRESHOLD
 end
@@ -473,16 +464,17 @@ end
 
 --[[
    SET_UP_INITIAL_C_NODES:
+   DO NOT USE!
 --]]
 function setUpInitialCNodes(member)
    for i=1, NUM_INPUT_NODES, 1 do
       for j=1, NUM_OUTPUT_NODES, 1 do
 	 local cNode = newConnectionNode(i, j+NUM_INPUT_NODES)
+	 member["genotype"]["numCNodes"] = member["genotype"]["numCNodes"] + 1
 	 cNode["weight"] = math.random() + math.random(-2, 2)
 	 table.insert(GLOBAL_INNOVATIONS, { ["in"]= i, ["out"]= j+NUM_INPUT_NODES })
 	 cNode["innovation"] = #GLOBAL_INNOVATIONS
 	 member["genotype"]["cNodes"][#GLOBAL_INNOVATIONS] = cNode
-	 member["genotype"]["numCNodes"] = member["genotype"]["numCNodes"] + 1
       end
    end
 
@@ -528,19 +520,57 @@ function beginRun(pool)
    return pool
 end
 
+function playTop(pool)
+   local maxfitness = 0
+   local maxs, maxg
+   for i,species in pairs(pool["species"]) do
+      for j,member in pairs(species["members"]) do
+	 if member["fitness"] > maxfitness then
+	    maxfitness = member["fitness"]
+	    maxs = i
+	    maxg = j
+	 end
+      end
+   end
+	
+   pool["currentSpecies"] = 34
+   pool["currentMember"] = 16
+   pool["bestFitness"] = maxfitness
+
+   beginRun(pool)
+
+   return pool
+end
+
 --[[
    CREATE_INITIAL_POPULATION:
 --]]
-function createInitialPopulation()
-   local pool = newPool()
+function createInitialPopulation(loadFromFile, playBest)
+   local pool
 
-   for i=1, POPULATION, 1 do
-      local member = newMember()
-      member = mutate(member)
-      pool = addMemberToSpecies(pool, member)
+   if loadFromFile then
+      local fileName = "backup.67.SMB1.1"
+      pool = loadFile(fileName)
+
+--      while pool["species"][pool["currentSpecies"]]["members"][pool["currentMember"]]["fitness"] ~= 0 do
+--	 pool = nextMember(pool)
+--      end
+   else
+      pool = newPool()
+
+      for i=1, POPULATION, 1 do
+	 local member = newMember()
+	 member = mutate(member)
+	 pool = addMemberToSpecies(pool, member)
+      end
    end
 
-   pool = beginRun(pool)
+   
+   if playBest then
+      pool = playTop(pool)
+   else
+      pool = beginRun(pool)
+   end
 
    return pool
 end
@@ -552,12 +582,14 @@ function main()
       Variation
       Selection
    --]]
-   local pool = createInitialPopulation()
-   
+   local doLoad = true
+   local playBest = true
+   local pool = createInitialPopulation(doLoad, playBest)
+
    while true do
       local backgroundColor = 0xD0FFFFFF
       if not forms.ischecked(hideBanner) then
-	 gui.drawBox(0, 0, 300, 26, backgroundColor, backgroundColor)
+	 gui.drawBox(0, 0, 300, 32, backgroundColor, backgroundColor)
       end
 
       local species = pool["currentSpecies"]
@@ -566,16 +598,11 @@ function main()
       if forms.ischecked(showNetwork) then
 	 displayMember(pool["species"][species]["members"][member])
       end      
-      --[[ Step 2 (Selection)
-	 Calculate Fitness for N elements 
-	 This will run the game for each of the N elements
-      --]]
       
       -- Evaluate the phenotype (network) and get the outputs (controller) then set the controller to it
       if FRAMES % 5 == 0 then
 	 evaluation(pool["species"][species]["members"][member])
       end
-
       joypad.set(CONTROLLER)
       
       -- Get Mario's position after evaluating the phenotype and check to see if there was an improvement.
@@ -587,23 +614,34 @@ function main()
       
       -- Lower the timeout and (using the bonusTime) check to see if we ran out of time for Mario to move
       TIMEOUT = TIMEOUT - 1
-      
       local bonusTime = FRAMES / 4
       if TIMEOUT + bonusTime <= 0 then
 	 pool["species"][species]["members"][member]["fitness"] = computeFitness(pool["species"][species]["members"][member])
 
 	 if pool["species"][species]["members"][member]["fitness"] > pool["bestFitness"] then
 	    pool["bestFitness"] = pool["species"][species]["members"][member]["fitness"]
-	    -- TODO: Write to file
+	    if WRITE then
+	       writeFile("backup." .. pool["generation"] .. ".SMB1.1", pool)
+	    end
+	    if END_GAME then
+	       return
+	    end
 	 end
 
-	 console.writeline("Gen " .. pool["generation"] .. " species " .. pool["currentSpecies"] .. " member " .. pool["currentMember"] .. " fitness: " .. pool["species"][species]["members"][member]["fitness"])
-	 pool["currentSpecies"] = 1
-	 pool["currentMember"] = 1
+	 console.writeline("Gen " .. pool["generation"] .. " species " .. pool["currentSpecies"] .. " member " .. pool["currentMember"] ..
+			      " fitness: " .. pool["species"][species]["members"][member]["fitness"])
+
+	 if not doLoad then
+	    pool["currentSpecies"] = 1
+	    pool["currentMember"] = 1
 	 
-	 while pool["species"][pool["currentSpecies"]]["members"][pool["currentMember"]]["fitness"] ~= 0 do
+	    while pool["species"][pool["currentSpecies"]]["members"][pool["currentMember"]]["fitness"] ~= 0 do
+	       pool = nextMember(pool)
+	    end
+	 else
 	    pool = nextMember(pool)
 	 end
+	
 	 beginRun(pool)
       end
       
@@ -620,9 +658,9 @@ function main()
       end
       
       if not forms.ischecked(hideBanner) then
-	 gui.drawText(0, 0, "Gen " .. pool["generation"] .. " species " .. pool["currentSpecies"] .. " genome " .. pool["currentMember"] .. " (" .. math.floor(measured/total*100) .. "%)", 0xFF000000, 11)
-	 gui.drawText(0, 12, "Fitness: " .. math.floor(FURTHEST_X - (FRAMES) / 2 - (TIMEOUT + bonusTime)*2/3), 0xFF000000, 11)
-	 gui.drawText(100, 12, "Max Fitness: " .. math.floor(pool["bestFitness"]), 0xFF000000, 11)
+	 gui.drawText(0, 5, "Gen " .. pool["generation"] .. " species " .. pool["currentSpecies"] .. " member " .. pool["currentMember"] .. " (" .. math.floor(measured/total*100) .. "%)", 0xFF000000, 11)
+	 gui.drawText(0, 17, "Fitness: " .. math.floor(FURTHEST_X - (FRAMES) / 2 - (TIMEOUT + bonusTime)*2/3), 0xFF000000, 11)
+	 gui.drawText(100, 17, "Max Fitness: " .. math.floor(pool["bestFitness"]), 0xFF000000, 11)
       end
       
       --[[ Advance a frame --]]
@@ -632,4 +670,3 @@ function main()
 end
 
 main()
---test()

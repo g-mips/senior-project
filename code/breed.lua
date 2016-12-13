@@ -326,6 +326,7 @@ function crossover(memberA, memberB)
    for _,cNode in pairs(memberBCNodes) do
       if nonUniqueBCNodes[cNode["innovation"]] == nil then
 	 child["genotype"]["cNodes"][cNode["innovation"]] = copyCNode(cNode)
+	 child["genotype"]["numCNodes"] = child["genotype"]["numCNodes"] + 1
       end
 
       if nodesAdded[cNode["in"]] == nil then
@@ -356,7 +357,7 @@ function checkInnovation(nodeIn, nodeOut)
 
    -- Check to see if the innovation already exists
    for i=1, #GLOBAL_INNOVATIONS, 1 do
-      if GLOBAL_INNOVATIONS[i]["in"] == nodeIn and GLOBAL_INNOVATIONS[i]["out"] == nodeOut then
+      if GLOBAL_INNOVATIONS[i] ~= nil and GLOBAL_INNOVATIONS[i]["in"] == nodeIn and GLOBAL_INNOVATIONS[i]["out"] == nodeOut then
 	 globalInnovationIndex = i
 	 break
       end

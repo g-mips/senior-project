@@ -126,89 +126,185 @@ function displayMember(member)
    end
 end
 
-function writeFile(filename)
-        local file = io.open(filename, "w")
-	file:write(pool.generation .. "\n")
-	file:write(pool.maxFitness .. "\n")
-	file:write(#pool.species .. "\n")
-        for n,species in pairs(pool.species) do
-		file:write(species.topFitness .. "\n")
-		file:write(species.staleness .. "\n")
-		file:write(#species.members .. "\n")
-		for m,member in pairs(species.members) do
-			file:write(member.fitness .. "\n")
-			file:write(member.maxneuron .. "\n")
-			for mutation,rate in pairs(member["mutationChances"]) do
-				file:write(mutation .. "\n")
-				file:write(rate .. "\n")
-			end
-			file:write("done\n")
-			
-			file:write(#member["genotype"]["cNodes"] .. "\n")
-			for l,cNode in pairs(member["genotype"]["cNodes"]) do
-				file:write(cNode["in"] .. " ")
-				file:write(cNode["out"] .. " ")
-				file:write(cNode["weight"] .. " ")
-				file:write(cNode.innovation .. " ")
-				if(cNode["active"]) then
-					file:write("1\n")
-				else
-					file:write("0\n")
-				end
-			end
-		end
-        end
-        file:close()
+function writeFile(filename, pool)
+   local file = io.open(filename, "w")
+   file:write(pool["generation"] .. "\n")
+   file:write(pool["bestFitness"] .. "\n")
+   file:write(#pool["species"] .. "\n")
+   for n,species in pairs(pool["species"]) do
+      file:write(species["bestFitness"] .. "\n")
+      file:write(species["uninteresting"] .. "\n")
+      file:write(#species["members"] .. "\n")
+      for m,member in pairs(species["members"]) do
+	 file:write(member["fitness"] .. "\n")
+	 file:write(member["genotype"]["numNodeGenes"] .. "\n")
+	 local count = 0
+	 for l,cNode in pairs(member["genotype"]["cNodes"]) do
+	    count = count + 1
+	 end
+
+	 if count == member["genotype"]["numCNodes"] then
+	    file:write(member["genotype"]["numCNodes"] .. "\n")
+	 else
+	    file:write(count .. "\n")
+	 end
+
+	 for mutation,rate in pairs(member["mutationChances"]) do
+	    file:write(mutation .. "\n")
+	    file:write(rate .. "\n")
+	 end
+	 file:write("done\n")
+
+	 for l,cNode in pairs(member["genotype"]["cNodes"]) do
+	    file:write(cNode["in"] .. " ")
+	    file:write(cNode["out"] .. " ")
+	    file:write(cNode["weight"] .. " ")
+	    file:write(cNode["innovation"] .. " ")
+	    if(cNode["active"]) then
+	       file:write("1\n")
+	    else
+	       file:write("0\n")
+	    end
+	 end
+      end
+   end
+   file:close()
+end
+
+function loadPool()
+	local filename = forms.gettext(saveLoadFile)
+	loadFile(filename)
 end
 
 function savePool()
-	local filename = forms.gettext(saveLoadFile)
-	writeFile(filename)
+   local filename = forms.gettext(saveLoadFile)
+   writeFile(filename)
 end
 
 function loadFile(filename)
-        local file = io.open(filename, "r")
-	pool = newPool()
-	pool.generation = file:read("*number")
-	pool.maxFitness = file:read("*number")
-	forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
-        local numSpecies = file:read("*number")
-        for s=1,numSpecies do
-		local species = newSpecies()
-		table.insert(pool.species, species)
-		species.topFitness = file:read("*number")
-		species.staleness = file:read("*number")
-		local numMembers = file:read("*number")
-		for g=1,numMembers do
-			local member = newMember()
-			table.insert(species.members, member)
-			member.fitness = file:read("*number")
-			member.maxneuron = file:read("*number")
-			local line = file:read("*line")
-			while line ~= "done" do
-				member["mutationChances"][line] = file:read("*number")
-				line = file:read("*line")
-			end
-			local numCNodes = file:read("*number")
-			for n=1,numCNodes do
-				local cNode = newCNode()
-				table.insert(member["genotype"]["cNodes"], cNode)
-				local enabled
-				cNode["in"], cNode["out"], cNode["weight"], cNode.innovation, enabled = file:read("*number", "*number", "*number", "*number", "*number")
-				if enabled == 0 then
-					cNode["active"] = false
-				else
-					cNode["active"] = true
-				end
-				
-			end
-		end
-	end
-        file:close()
-	
-	while fitnessAlreadyMeasured() do
-		nextMember()
-	end
-	initializeRun()
-	pool.currentFrame = pool.currentFrame + 1
+   local lineNum = 1
+   local file = io.open(filename, "r")
+   local pool = newPool()
+   pool["generation"] = file:read("*number")
+   pool["bestFitness"] = file:read("*number")
+   --forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool["bestFitness"]))
+   local numSpecies = file:read("*number")
+
+   for s=1,numSpecies do
+      local species = newSpecies()
+      table.insert(pool["species"], species)
+      species["bestFitness"] = file:read("*number")
+      species["uninteresting"] = file:read("*number")
+      local numMembers = file:read("*number")
+
+      for g=1,numMembers do
+	 local member = newMember()
+	 table.insert(species["members"], member)
+	 member["fitness"] = file:read("*number")
+	 member["genotype"]["numNodeGenes"] = file:read("*number")
+	 member["genotype"]["numCNodes"] = file:read("*number")
+
+	 local line = file:read()
+	 line = file:read()
+
+--[[	 print(member["fitness"])
+	 print(member["genotype"]["numNodeGenes"])
+	 print(member["genotype"]["numCNodes"])
+	 print(line)
+
+	 print("ENTER")
+   print (lineNum) --]]
+	 while line ~= "done" do
+	    member["mutationChances"][line] = file:read("*number")
+	    lineNum = lineNum + 1
+	    line = file:read()
+	    line = file:read()
+	    lineNum = lineNum + 1
+	 end
+	 
+--[[	 if lineNum < 400 then
+	    print("AFTER MUTATE")
+	    print(member["mutationChances"])
+	    print(lineNum)
+	 end --]]
+	 for n=1,member["genotype"]["numCNodes"] do
+	    local inNode, outNode, weight, innovation, enabled = file:read("*number", "*number", "*number", "*number", "*number")
+
+	    --if lineNum < 342 then
+--	       print(inNode .. " " .. outNode .. " " .. weight .. " " .. innovation .. " " .. enabled)
+--	    end
+	    local cNode = newConnectionNode(inNode, outNode)
+	    if enabled == 0 then
+	       cNode["active"] = false
+	    else
+	       cNode["active"] = true
+	    end
+
+	    cNode["weight"] = weight
+	    cNode["innovation"] = innovation
+
+--[[	    if inNode == nil then
+	       print("INNODE\n")
+	       print(inNode)
+	    end
+
+	    if outNode == nil then
+	       print("OUTNODE\n")
+	       print(outNode)
+	    end
+
+	    if weight == nil then
+	       print("WEIGHT\n")
+	       print(weight)
+	    end
+
+	    if enabled == nil then
+	       print("ENABLED\n")
+	       print(n)
+	       print(member)
+	       print(member["genotype"])
+	       print(inNode)
+	       print(outNode)
+	       print(weight)
+	       print(innovation)	       
+	       print(enabled)
+	       print("LINE NUM: ")
+	       print(lineNum)
+	    end
+	    
+	    if innovation == nil then
+	       print("INNOVATION\n")
+	       print(innovation)
+	       print("LINE NUM: ")
+	       print(lineNum)	       
+	    end
+	    
+	    if member == nil then
+	       print("Member Nil")
+	    elseif member["genotype"] == nil then
+	       print("Genotype Nil")
+	    elseif member["genotype"]["cNodes"] == nil then
+	       print("cNodes Nil")
+	       end
+--]]	    
+	    member["genotype"]["cNodes"][cNode["innovation"]] = cNode
+	    lineNum = lineNum + 1
+	    if checkInnovation(cNode["in"], cNode["out"]) == 0 then
+	       GLOBAL_INNOVATIONS[cNode["innovation"]] = { ["in"]= cNode["in"], ["out"]= cNode["out"] }
+	    end
+	 end
+      end
+   end
+   file:close()
+
+   --[[
+   while fitnessAlreadyMeasured() do
+      nextMember()
+   end
+   initializeRun()
+   pool.currentFrame = pool.currentFrame + 1
+   --]]
+
+   return pool
 end
+

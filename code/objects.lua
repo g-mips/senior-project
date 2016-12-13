@@ -80,7 +80,7 @@ function newMember()
 	 ["node"]= NODE_CHANCE,
 	 ["connection"]= CONNECTION_CHANCE,
 	 ["enable"]= ENABLE_CHANCE,
-	 ["disable"]= DISABLE_CHANCE
+	 ["disable"]= DISABLE_CHANCE,
 			 },
       ["fitness"]= 0,
       ["adjustedFitness"]= 0,
